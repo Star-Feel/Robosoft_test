@@ -1,6 +1,7 @@
 import dataclasses
 from dataclasses import dataclass, field, fields
-from typing import Sequence, Type, Optional, Union, Iterable, NewType, Any
+from typing import Any, Iterable, NewType, Optional, Sequence, Type, Union
+
 import numpy as np
 from transformers import HfArgumentParser
 

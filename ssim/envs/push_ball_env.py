@@ -1,4 +1,5 @@
 from typing import Optional
+
 import elastica as ea
 import numpy as np
 from elastica import (BaseSystemCollection, CallBacks, Connections,
@@ -8,7 +9,7 @@ from elastica.timestepper import extend_stepper_interface
 
 from ..arguments import RodArguments, SimulatorArguments, SphereArguments
 from ..components import RigidBodyAnalyticalLinearDamper
-from ..visualize.visualizer import plot_video, create_3d_animation
+from ..visualize.visualizer import create_3d_animation, plot_video
 
 
 class BaseSimulator(BaseSystemCollection, Constraints, Connections, Forcing,

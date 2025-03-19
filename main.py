@@ -1,6 +1,12 @@
-from ssim.envs import PushBallEnvironment
-from ssim.arguments import RodArguments, SphereArguments, SimulatorArguments, SuperArgumentParser
 from tqdm import tqdm
+
+from ssim.arguments import (
+    RodArguments,
+    SimulatorArguments,
+    SphereArguments,
+    SuperArgumentParser,
+)
+from ssim.envs import PushBallEnvironment
 
 
 def run_simulation(env: PushBallEnvironment):
@@ -17,12 +23,10 @@ def run_simulation(env: PushBallEnvironment):
     # Use tqdm to create a progress bar
     progress_steps = range(0, total_steps, update_interval)
     with tqdm(total=total_steps, desc="Simulation Progress") as pbar:
-        for i in progress_steps:
-            # Sample action using the configured torque sampler
-            # current_time = simulator.time_tracker
-
-            state = env.step()
+        for _ in progress_steps:
+            env.step()
             pbar.update(1)
+
     return True
 
 
