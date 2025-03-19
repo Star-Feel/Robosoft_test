@@ -98,11 +98,3 @@ class RodArguments:
     density: float = field(default=1000.0)
     youngs_modulus: float = field(default_factory=float)
     poisson_ratio: float = field(default=0.5)
-
-
-# class A(NamedTuple):
-#     b: int = 1
-
-# data = {'b': '1'}
-# a = A({k: A.__annotations__[k](v) for k, v in data.items()})
-# b = RodArguments(**data)
