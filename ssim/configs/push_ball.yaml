@@ -1,0 +1,25 @@
+# Sphere configuration
+sphere:
+  center: [0.0, 0.0, 1.0]
+  radius: 0.1
+  density: 1.0
+
+# Rod configuration
+rod:
+  n_elem: 50
+  start: [0.0, 0.0, 0.0]
+  direction: [0.0, 0.0, 1.0]
+  normal: [0.0, 1.0, 0.0]
+  base_length: 0.35
+  base_radius: 0.0035
+  density: 100000
+  youngs_modulus: 1000000
+  poisson_ratio: 0.5
+
+# Simulator configuration
+simulator:
+  final_time: 10.0
+  time_step: 2.5e-4
+  collect_data: true
+  rendering_fps: 20
+  update_interval: 1
