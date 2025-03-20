@@ -40,7 +40,7 @@ def main():
     success = run_simulation(env)
 
     env.visualize_3d(save_path="3d.mp4")
-    # env.visualize_2d(save_path="2d.mp4")
+    env.visualize_2d(save_path="2d.mp4")
 
     return success
 

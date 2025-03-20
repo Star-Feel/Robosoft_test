@@ -123,7 +123,7 @@ class PushBallEnvironment:
                                 density=self.sphere_config.density)
         self.simulator.append(self.sphere)
 
-        force_magnitude = 0.1
+        force_magnitude = 0.2
         self.simulator.add_forcing_to(self.shearable_rod).using(
             ea.UniformForces,
             force=force_magnitude,
