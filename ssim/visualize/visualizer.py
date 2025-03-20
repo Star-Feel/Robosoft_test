@@ -65,10 +65,121 @@ def plot_video(
     plt.close(plt.gcf())
 
 
+# def create_3d_animation(position_rod: np.ndarray,
+#                         position_sphere: np.ndarray,
+#                         sphere_radius: float,
+#                         save_path=None,
+#                         fps=30,
+#                         skip=1):
+#     """
+#     Create and save a 3D animation of the rod motion with sphere
+#     """
+#     fig = plt.figure(figsize=(10, 8))
+#     ax = fig.add_subplot(111, projection='3d')
+
+#     # 合并杆和球体的坐标范围（包含球体边界）
+#     sphere_min = position_sphere - sphere_radius
+#     sphere_max = position_sphere + sphere_radius
+#     all_positions = np.concatenate([position_rod, sphere_min, sphere_max],
+#                                    axis=-1)
+
+#     # 计算动态坐标范围
+#     x_min, x_max = np.min(all_positions[:, 0, :]), np.max(all_positions[:,
+#                                                                         0, :])
+#     y_min, y_max = np.min(all_positions[:, 1, :]), np.max(all_positions[:,
+#                                                                         1, :])
+#     z_min, z_max = np.min(all_positions[:, 2, :]), np.max(all_positions[:,
+#                                                                         2, :])
+
+#     # 添加边距
+#     margin = 0.1
+#     x_min -= margin * (x_max - x_min)
+#     x_max += margin * (x_max - x_min)
+#     y_min -= margin * (y_max - y_min)
+#     y_max += margin * (y_max - y_min)
+#     z_min -= margin * (z_max - z_min)
+#     z_max += margin * (z_max - z_min)
+
+#     # 设置动态坐标轴
+#     ax.set_xlim(x_min, x_max)
+#     ax.set_ylim(y_min, y_max)
+#     ax.set_zlim(z_min, z_max)
+#     ax.set_xlabel('X')
+#     ax.set_ylabel('Y')
+#     ax.set_zlabel('Z')
+#     ax.set_title('Rod Motion Animation')
+
+#     # 初始化杆的曲线
+#     line, = ax.plot([], [], [], 'r-', lw=2)
+
+#     # 初始化球体参数
+#     u, v = np.mgrid[0:2 * np.pi:20j, 0:np.pi:10j]
+#     x = sphere_radius * np.cos(u) * np.sin(v)
+#     y = sphere_radius * np.sin(u) * np.sin(v)
+#     z = sphere_radius * np.cos(v)
+#     sphere_surface = ax.plot_surface(x, y, z, color='b', alpha=0.6)
+
+#     # 时间显示
+#     time_template = 'Time: %.3fs'
+#     time_text = ax.text2D(0.05, 0.95, '', transform=ax.transAxes)
+#     num_frames = position_rod.shape[0]
+
+#     def init():
+#         line.set_data([], [])
+#         line.set_3d_properties([])
+
+#         time_text.set_text('')
+#         return line, sphere_surface, time_text
+
+#     def update(frame):
+#         # 更新杆的位置
+#         line.set_data(position_rod[frame, 0, :], position_rod[frame, 1, :])
+#         line.set_3d_properties(position_rod[frame, 2, :])
+
+#         # 更新球体位置
+#         cx, cy, cz = position_sphere[frame]
+#         nonlocal sphere_surface
+#         sphere_surface.remove()
+#         sphere_surface = ax.plot_surface(x + cx,
+#                                          y + cy,
+#                                          z + cz,
+#                                          color='b',
+#                                          alpha=0.6)
+
+#         # 更新时间显示
+#         time_text.set_text(time_template % (frame / fps))
+#         return line, sphere_surface, time_text
+
+#     progress_callback = tqdm(total=num_frames // skip,
+#                              desc="Generating frames")
+
+#     def update_with_progress(frame):
+#         result = update(frame)
+#         progress_callback.update(1)
+#         return result
+
+#     anim = animation.FuncAnimation(fig,
+#                                    update_with_progress,
+#                                    frames=range(0, num_frames, skip),
+#                                    init_func=init,
+#                                    blit=True,
+#                                    interval=1000 / fps)
+
+#     # 保存视频
+#     if save_path:
+#         writer = animation.FFMpegWriter(fps=fps,
+#                                         metadata={'artist': 'DeepSeek'},
+#                                         bitrate=5000)
+#         anim.save(save_path, writer=writer)
+
+#     plt.close()
+#     return anim
+
+
 def create_3d_animation(
-        position_rod,
-        position_sphere,  # 新增球体位置参数 (time_steps, 3)
-        sphere_radius,  # 新增球体半径参数
+        position_rod: np.ndarray,
+        position_sphere: np.ndarray,  # 新增球体位置参数 (time_steps, 3)
+        sphere_radius: float,  # 新增球体半径参数
         save_path=None,
         fps=30,
         skip=1):
@@ -88,21 +199,39 @@ def create_3d_animation(
     ax = fig.add_subplot(111, projection='3d')
 
     # 合并杆和球体的坐标范围
-    all_positions = np.concatenate(
-        [position_rod.reshape(-1, 3),
-         position_sphere.reshape(-1, 3)], axis=0)
+    all_positions = np.concatenate([position_rod, position_sphere], axis=-1)
 
     # 计算统一的坐标范围
-    mins = all_positions.min(axis=0)
-    maxs = all_positions.max(axis=0)
-    ranges = maxs - mins
+    x_min, x_max = np.min(all_positions[:, 0, :]), np.max(all_positions[:,
+                                                                        0, :])
+    y_min, y_max = np.min(all_positions[:, 1, :]), np.max(all_positions[:,
+                                                                        1, :])
+    z_min, z_max = np.min(all_positions[:, 2, :]), np.max(all_positions[:,
+                                                                        2, :])
+
     margin = 0.1
-    ax.set_xlim(mins[0] - margin * ranges[0], maxs[0] + margin * ranges[0])
-    ax.set_ylim(mins[1] - margin * ranges[1], maxs[1] + margin * ranges[1])
-    ax.set_zlim(mins[2] - margin * ranges[2], maxs[2] + margin * ranges[2])
+    x_range = x_max - x_min
+    y_range = y_max - y_min
+    z_range = z_max - z_min
+
+    x_min -= margin * x_range
+    x_max += margin * x_range
+    y_min -= margin * y_range
+    y_max += margin * y_range
+    z_min -= margin * z_range
+    z_max += margin * z_range
+
+    # Set axis limits and labels
+    ax.set_xlim(-4, 4)
+    ax.set_ylim(-4, 4)
+    ax.set_zlim(-4, 4)
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_title('Rod Motion Animation')
 
     # 初始化杆的曲线
-    rod_line, = ax.plot([], [], [], 'r-', lw=2)
+    line, = ax.plot([], [], [], 'r-', lw=2)
 
     # 初始化球体（使用meshgrid创建球面）
     u = np.linspace(0, 2 * np.pi, 20)
@@ -110,33 +239,57 @@ def create_3d_animation(
     x = sphere_radius * np.outer(np.cos(u), np.sin(v))
     y = sphere_radius * np.outer(np.sin(u), np.sin(v))
     z = sphere_radius * np.outer(np.ones(np.size(u)), np.cos(v))
+    global sphere_surface
     sphere_surface = ax.plot_surface(x, y, z, color='b', alpha=0.6)
 
     # 时间显示
     time_template = 'Time: %.3fs'
     time_text = ax.text2D(0.05, 0.95, '', transform=ax.transAxes)
+    num_frames = all_positions.shape[0]
+
+    def init():
+        line.set_data([], [])
+        line.set_3d_properties([])
+        time_text.set_text('')
+        return line, time_text
 
     def update(frame):
         # 更新杆的位置
-        rod_line.set_data(position_rod[frame, 0, :], position_rod[frame, 1, :])
-        rod_line.set_3d_properties(position_rod[frame, 2, :])
+        line.set_data(position_rod[frame, 0, :], position_rod[frame, 1, :])
+        line.set_3d_properties(position_rod[frame, 2, :])
 
         # 更新球体位置
         cx, cy, cz = position_sphere[frame]
-        sphere_surface._verts3d = (x + cx, y + cy, z + cz)
-
+        x_new = x + cx
+        y_new = y + cy
+        z_new = z + cz
+        # sphere_surface._verts3d = (x + cx[0], y + cy[0], z + cz[0])
+        global sphere_surface
+        sphere_surface.remove()  # 删除旧对象
+        sphere_surface = ax.plot_surface(x_new,
+                                         y_new,
+                                         z_new,
+                                         color='b',
+                                         alpha=0.6)
         # 更新时间显示
         time_text.set_text(time_template % (frame / fps))
 
-        return rod_line, sphere_surface, time_text
+        return line, sphere_surface, time_text
 
-    # 创建动画
+    progress_callback = tqdm(total=num_frames // skip,
+                             desc="Generating frames")
+
+    def update_with_progress(frame):
+        result = update(frame)
+        progress_callback.update(1)
+        return result
+
     anim = animation.FuncAnimation(fig,
-                                   update,
-                                   frames=range(0, position_rod.shape[0],
-                                                skip),
-                                   interval=1000 / fps,
-                                   blit=False)
+                                   update_with_progress,
+                                   frames=range(0, num_frames, skip),
+                                   init_func=init,
+                                   blit=True,
+                                   interval=1000 / fps)
 
     # 保存视频
     if save_path:

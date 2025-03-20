@@ -1,11 +1,7 @@
 from tqdm import tqdm
 
-from ssim.arguments import (
-    RodArguments,
-    SimulatorArguments,
-    SphereArguments,
-    SuperArgumentParser,
-)
+from ssim.arguments import (RodArguments, SimulatorArguments, SphereArguments,
+                            SuperArgumentParser)
 from ssim.envs import PushBallEnvironment
 
 
@@ -43,8 +39,8 @@ def main():
     env.setup()
     success = run_simulation(env)
 
-    # env.create_3d_animation(save_path=".mp4", fps=sim_config.rendering_fps)
-    env.visualize_2d(save_path="2d.mp4")
+    env.visualize_3d(save_path="3d.mp4")
+    # env.visualize_2d(save_path="2d.mp4")
 
     return success
 
