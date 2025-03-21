@@ -12,13 +12,11 @@ pip install -r requirements.txt
 ```
 
 ## grab ball
-![Description](videos/2d.gif)
-<video width="640" height="360" controls>
-  <source src="videos/2d.gif" type="video/gif">
-  Your browser does not support the video tag.
-</video>
 
-<video width="640" height="360" controls>
-  <source src="videos/3d.gif" type="video/gif">
-  Your browser does not support the video tag.
-</video>
+<div style="text-align: center;">
+  <img src="videos/2d.gif" alt="Demo GIF" width="300"/>
+</div>
+
+<div style="text-align: center;">
+  <img src="videos/3d.gif" alt="Demo GIF" width="300"/>
+</div>
