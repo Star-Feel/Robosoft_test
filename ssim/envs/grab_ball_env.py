@@ -10,7 +10,7 @@ from elastica._calculus import _isnan_check
 from elastica.timestepper import extend_stepper_interface
 
 from ..arguments import RodArguments, SimulatorArguments, SphereArguments
-from ..components import RigidBodyAnalyticalLinearDamper, PinJoint
+from ..components import RigidBodyAnalyticalLinearDamper, PinJoint, ChangeableUniformForce
 from ..visualize.visualizer import create_3d_animation, plot_video
 
 
@@ -88,6 +88,10 @@ class GrabBallEnvironment:
         self.sim_config = sim_config
         self.stateful_stepper = PositionVerlet()
 
+        self.objects = []
+        self.uniform_force = np.array([0, 0, 1])
+        self.joint_flag = []
+
         self.total_steps = int(self.sim_config.final_time /
                                self.sim_config.time_step)
         self.time_step = np.float64(
@@ -125,11 +129,11 @@ class GrabBallEnvironment:
                                 density=self.sphere_config.density)
         self.simulator.append(self.sphere)
 
-        force_magnitude = 0.1
+        self.objects.append(self.sphere)
+
         self.simulator.add_forcing_to(self.shearable_rod).using(
-            ea.UniformForces,
-            force=force_magnitude,
-            direction=np.array([0.0, 0.0, 1.0]),
+            ChangeableUniformForce,
+            directional_force=self.uniform_force,
         )
 
         # self.simulator.detect_contact_between(
@@ -139,12 +143,14 @@ class GrabBallEnvironment:
         #                        nu=0,
         #                        velocity_damping_coefficient=1e3,
         #                        friction_coefficient=10)
-        self.joint_flag = [False]
+
+        self.joint_flag.append(False)
         self.simulator.constrain(self.sphere).using(
             PinJoint,
             other=self.shearable_rod,
             index=-1,
             flag=self.joint_flag,
+            flag_id=0,
         )
 
         damping_constant = 2e-2

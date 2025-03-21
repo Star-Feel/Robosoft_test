@@ -21,8 +21,11 @@ def run_simulation(env: PushBallEnvironment):
     progress_steps = range(0, total_steps, update_interval)
     with tqdm(total=total_steps, desc="Simulation Progress") as pbar:
         for _ in progress_steps:
-            if is_contact(env.sphere, env.shearable_rod):
-                env.joint_flag[0] = True
+            if not any(env.joint_flag):
+                for idx, object_ in enumerate(env.objects):
+                    if is_contact(object_, env.shearable_rod):
+                        env.joint_flag[idx] = True
+                        env.uniform_force[-1] = -1
             env.step()
             pbar.update(1)
 
