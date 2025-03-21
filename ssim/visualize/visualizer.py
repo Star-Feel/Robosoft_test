@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from tqdm import tqdm
+import elastica as ea
 
 
 def plot_video(
@@ -271,6 +272,146 @@ def create_3d_animation(
                                          z_new,
                                          color='b',
                                          alpha=0.6)
+        # 更新时间显示
+        time_text.set_text(time_template % (frame / fps))
+
+        return line, sphere_surface, time_text
+
+    progress_callback = tqdm(total=num_frames // skip,
+                             desc="Generating frames")
+
+    def update_with_progress(frame):
+        result = update(frame)
+        progress_callback.update(1)
+        return result
+
+    anim = animation.FuncAnimation(fig,
+                                   update_with_progress,
+                                   frames=range(0, num_frames, skip),
+                                   init_func=init,
+                                   blit=True,
+                                   interval=1000 / fps)
+
+    # 保存视频
+    if save_path:
+        writer = animation.FFMpegWriter(fps=fps,
+                                        metadata={'artist': 'DeepSeek'},
+                                        bitrate=5000)
+        anim.save(save_path, writer=writer)
+
+    plt.close()
+    return anim
+
+
+def rod_objects_3d_visualize(
+        position_rod: np.ndarray,
+        position_objects: list[np.ndarray],
+        objects: list,  # 新增球体半径参数
+        save_path=None,
+        fps=30,
+        skip=1):
+    """
+    Create and save a 3D animation of the rod motion with sphere
+
+    Args:
+        position_rod: 杆的位置数据 (time_steps, 3, n_elems)
+        position_sphere: 球体中心位置数据 (time_steps, 3)
+        sphere_radius: 球体半径
+        save_path: 视频保存路径
+        fps: 帧率
+        skip: 跳帧参数（优化性能）
+    """
+    # 初始化图形
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # 合并杆和球体的坐标范围
+    all_positions = np.concatenate([position_rod, *position_objects], axis=-1)
+
+    # 计算统一的坐标范围
+    x_min, x_max = np.min(all_positions[:, 0, :]), np.max(all_positions[:,
+                                                                        0, :])
+    y_min, y_max = np.min(all_positions[:, 1, :]), np.max(all_positions[:,
+                                                                        1, :])
+    z_min, z_max = np.min(all_positions[:, 2, :]), np.max(all_positions[:,
+                                                                        2, :])
+
+    margin = 0.1
+    x_range = x_max - x_min
+    y_range = y_max - y_min
+    z_range = z_max - z_min
+
+    x_min -= margin * x_range
+    x_max += margin * x_range
+    y_min -= margin * y_range
+    y_max += margin * y_range
+    z_min -= margin * z_range
+    z_max += margin * z_range
+
+    # Set axis limits and labels
+    ax.set_xlim(-4, 4)
+    ax.set_ylim(-4, 4)
+    ax.set_zlim(-4, 4)
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_title('Rod Motion Animation')
+
+    # 初始化杆的曲线
+    line, = ax.plot([], [], [], 'r-', lw=2)
+    # 初始化objects
+    objects_plot = []
+    for obj in objects:
+        if isinstance(obj, ea.Sphere):
+            # 初始化球体（使用meshgrid创建球面）
+            u = np.linspace(0, 2 * np.pi, 20)
+            v = np.linspace(0, np.pi, 20)
+            x = obj.radius * np.outer(np.cos(u), np.sin(v))
+            y = obj.radius * np.outer(np.sin(u), np.sin(v))
+            z = obj.radius * np.outer(np.ones(np.size(u)), np.cos(v))
+            sphere_surface = ax.plot_surface(x, y, z, color='b', alpha=0.6)
+            objects_plot.append(sphere_surface)
+
+    # 时间显示
+    time_template = 'Time: %.3fs'
+    time_text = ax.text2D(0.05, 0.95, '', transform=ax.transAxes)
+    num_frames = all_positions.shape[0]
+
+    def init():
+        line.set_data([], [])
+        line.set_3d_properties([])
+        time_text.set_text('')
+        return line, time_text
+
+    def update(frame):
+        # 更新杆的位置
+        line.set_data(position_rod[frame, 0, :], position_rod[frame, 1, :])
+        line.set_3d_properties(position_rod[frame, 2, :])
+
+        nonlocal objects_plot
+        for plot in objects_plot:
+            plot.remove()
+        objects_plot = []
+        # 更新球体位
+        for idx, obj in enumerate(objects):
+            if isinstance(obj, ea.Sphere):
+
+                u = np.linspace(0, 2 * np.pi, 20)
+                v = np.linspace(0, np.pi, 20)
+                x = obj.radius * np.outer(np.cos(u), np.sin(v))
+                y = obj.radius * np.outer(np.sin(u), np.sin(v))
+                z = obj.radius * np.outer(np.ones(np.size(u)), np.cos(v))
+                cx, cy, cz = position_objects[idx][frame]
+                x_new = x + cx
+                y_new = y + cy
+                z_new = z + cz
+                sphere_surface = ax.plot_surface(x_new,
+                                                 y_new,
+                                                 z_new,
+                                                 color='b',
+                                                 alpha=0.6)
+                objects_plot.append(sphere_surface)
+
         # 更新时间显示
         time_text.set_text(time_template % (frame / fps))
 

@@ -11,6 +11,7 @@ from matplotlib import animation
 from tqdm import tqdm
 
 from ..components import PinJoint, RigidBodyCallBack, RodCallBack
+from ..visualize.visualizer import rod_objects_3d_visualize
 
 
 class BaseSimulator(BaseSystemCollection, Constraints, Connections, Forcing,
@@ -167,3 +168,12 @@ class RodObjectsEnvironment(ABC):
 
         # 关闭图形
         plt.close(plt.gcf())
+
+    def visualize_3d(self, video_name, fps):
+        rod_objects_3d_visualize(
+            np.array(self.rod_callback["position"]),
+            [np.array(params["position"]) for params in self.object_callbacks],
+            self.objects,
+            video_name,
+            fps,
+        )

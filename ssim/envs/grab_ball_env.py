@@ -9,6 +9,8 @@ from elastica import PositionVerlet
 from elastica._calculus import _isnan_check
 from elastica.timestepper import extend_stepper_interface
 
+from ..components.contact import JoinableRodSphereContactt
+
 from ..arguments import (RodArguments, SimulatorArguments, SphereArguments,
                          SuperArguments)
 from ..components import (ChangeableUniformForce,
@@ -73,13 +75,16 @@ class GrabBallEnvironment(RodObjectsEnvironment):
             directional_force=self.uniform_force,
         )
 
-        # self.simulator.detect_contact_between(
-        #     self.shearable_rod,
-        #     self.sphere).using(ea.RodSphereContact,
-        #                        k=10,
-        #                        nu=0,
-        #                        velocity_damping_coefficient=1e3,
-        #                        friction_coefficient=10)
+        for obj in self.objects:
+            self.simulator.detect_contact_between(
+                self.shearable_rod,
+                obj).using(JoinableRodSphereContactt,
+                           k=10,
+                           nu=0,
+                           velocity_damping_coefficient=1e3,
+                           friction_coefficient=10,
+                           flag=self.action_flags,
+                           flag_id=self.object2id[obj])
 
         # for i in range(len(self.objects)):
         #     for j in range(i + 1, len(self.objects)):

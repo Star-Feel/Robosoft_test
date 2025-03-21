@@ -24,7 +24,7 @@ def run_simulation(env: GrabBallEnvironment) -> bool:
         for _ in progress_steps:
             if not any(env.action_flags):
                 for idx, object_ in enumerate(env.objects):
-                    if is_contact(object_, env.shearable_rod):
+                    if is_contact(object_, env.shearable_rod) and idx == 0:
                         env.action_flags[idx] = True
                         env.uniform_force[-1] = -1
             env.step()
@@ -43,8 +43,8 @@ def main():
     env.setup()
     success = run_simulation(env)
 
-    # env.create_3d_animation(save_path=".mp4", fps=sim_config.rendering_fps)
     env.visualize_2d(video_name="2d.mp4", fps=env.rendering_fps)
+    env.visualize_3d(video_name="3d.mp4", fps=env.rendering_fps)
 
     return success
 

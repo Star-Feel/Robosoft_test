@@ -4,7 +4,14 @@ objects:
     center: [0.0, 0.0, 2.0]
     radius: 0.3
     density: 1.0
-
+  - type: sphere
+    center: [0.0, 0.0, 3.0]
+    radius: 0.2
+    density: 1.0
+  - type: sphere
+    center: [0.25, 0, 1.0]
+    radius: 0.3
+    density: 1.0
 # Rod configuration
 rod:
   n_elem: 50
