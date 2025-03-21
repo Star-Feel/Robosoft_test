@@ -4,6 +4,7 @@ from typing import Any, Iterable, NewType, Optional, Sequence, Type, Union
 
 import numpy as np
 from transformers import HfArgumentParser
+import yaml
 
 DataClass = NewType("DataClass", Any)
 DataClassType = NewType("DataClassType", Any)
@@ -37,8 +38,22 @@ class SuperArgumentParser(HfArgumentParser):
         allow_extra_keys: bool = False,
     ) -> tuple[DataClass, ...]:
         if self.prefix is None:
-            return super().parse_dict(args, allow_extra_keys)
-
+            unused_keys = set(args.keys())
+            outputs = []
+            for dtype in self.dataclass_types:
+                keys = {f.name for f in dataclasses.fields(dtype) if f.init}
+                types = {f.name: f.type for f in fields(dtype) if f.init}
+                inputs = {
+                    k: self._convert_type(v, types[k])
+                    for k, v in args.items() if k in keys
+                }
+                unused_keys.difference_update(inputs.keys())
+                obj = dtype(**inputs)
+                outputs.append(obj)
+            if not allow_extra_keys and unused_keys:
+                raise ValueError(f"Some keys are not used by the"
+                                 f"HfArgumentParser: {sorted(unused_keys)}")
+            return tuple(outputs)
         outputs = []
         for idx, dtype in enumerate(self.dataclass_types):
 
@@ -70,6 +85,38 @@ class SuperArgumentParser(HfArgumentParser):
 
 
 @dataclass
+class SuperArguments:
+
+    def __post_init__(self):
+        for field_name in self.__dataclass_fields__:
+            if getattr(self, field_name) == self.__annotations__[field_name]:
+
+                continue
+            value = getattr(self, field_name)
+            if isinstance(value, dict):
+                dataclass_type = value.get("type", field_name)
+                setattr(
+                    self, field_name,
+                    SuperArgumentParser(args_dict[dataclass_type]).parse_dict(
+                        value, True)[0])
+            elif isinstance(value, list):
+                configs = []
+                for config in value:
+                    configs.append(
+                        SuperArgumentParser(
+                            args_dict[config["type"]]).parse_dict(
+                                config, True)[0])
+                setattr(self, field_name, configs)
+
+    @classmethod
+    def from_yaml(cls, file_path: str):
+        with open(file_path, "r") as file:
+            data = yaml.safe_load(file)
+
+        return cls(**data)
+
+
+@dataclass
 class SphereArguments:
     center: np.ndarray = field(default_factory=list)
     radius: float = field(default_factory=float)
@@ -98,3 +145,10 @@ class RodArguments:
     density: float = field(default=1000.0)
     youngs_modulus: float = field(default_factory=float)
     poisson_ratio: float = field(default=0.5)
+
+
+args_dict = {
+    "rod": RodArguments,
+    "sphere": SphereArguments,
+    "simulator": SimulatorArguments,
+}

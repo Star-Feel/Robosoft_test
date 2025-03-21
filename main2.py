@@ -2,11 +2,12 @@ from tqdm import tqdm
 
 from ssim.arguments import (RodArguments, SimulatorArguments, SphereArguments,
                             SuperArgumentParser)
-from ssim.envs import GrabBallEnvironment, PushBallEnvironment
+from ssim.envs import GrabBallEnvironment, PushBallEnvironment, GrabBallArguments
 from ssim.utils import is_contact
+import yaml
 
 
-def run_simulation(env: PushBallEnvironment):
+def run_simulation(env: GrabBallEnvironment) -> bool:
 
     # Get update interval from simulator configuration
     update_interval = env.sim_config.update_interval
@@ -21,10 +22,10 @@ def run_simulation(env: PushBallEnvironment):
     progress_steps = range(0, total_steps, update_interval)
     with tqdm(total=total_steps, desc="Simulation Progress") as pbar:
         for _ in progress_steps:
-            if not any(env.joint_flag):
+            if not any(env.action_flags):
                 for idx, object_ in enumerate(env.objects):
                     if is_contact(object_, env.shearable_rod):
-                        env.joint_flag[idx] = True
+                        env.action_flags[idx] = True
                         env.uniform_force[-1] = -1
             env.step()
             pbar.update(1)
@@ -34,19 +35,16 @@ def run_simulation(env: PushBallEnvironment):
 
 def main():
 
-    config_path = "/data/zyw/workshop/attempt/ssim/configs/push_ball.yaml"
-    parser = SuperArgumentParser(
-        (SphereArguments, RodArguments, SimulatorArguments),
-        prefix=("sphere", "rod", "simulator"))
-    sphere_config, rod_config, sim_config = parser.parse_yaml_file(config_path)
+    config_path = "/data/zyw/workshop/attempt/ssim/configs/rod_objects.yaml"
+    configs = GrabBallArguments.from_yaml(config_path)
 
-    env = GrabBallEnvironment(rod_config, sphere_config, sim_config)
+    env = GrabBallEnvironment(configs)
 
     env.setup()
     success = run_simulation(env)
 
     # env.create_3d_animation(save_path=".mp4", fps=sim_config.rendering_fps)
-    env.visualize_2d(save_path="2d.mp4")
+    env.visualize_2d(video_name="2d.mp4", fps=env.rendering_fps)
 
     return success
 

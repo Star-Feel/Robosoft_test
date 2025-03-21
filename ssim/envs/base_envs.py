@@ -1,0 +1,169 @@
+__all__ = ["RodObjectsEnvironment"]
+
+from abc import ABC, abstractmethod
+
+import elastica as ea
+import matplotlib.pyplot as plt
+import numpy as np
+from elastica import (BaseSystemCollection, CallBacks, Connections,
+                      Constraints, Contact, Damping, Forcing)
+from matplotlib import animation
+from tqdm import tqdm
+
+from ..components import PinJoint, RigidBodyCallBack, RodCallBack
+
+
+class BaseSimulator(BaseSystemCollection, Constraints, Connections, Forcing,
+                    Damping, Contact, CallBacks):
+    """Base simulator class combining Elastica functionalities."""
+    pass
+
+
+class RodObjectsEnvironment(ABC):
+
+    def __init__(self):
+        self.shearable_rod = None
+
+        self.objects = []
+        self.action_flags = []
+        self.object2id = {}
+        self.object_callbacks = []
+
+        self.simulator = BaseSimulator()
+
+        self.rod_callback = ea.defaultdict(list)
+        self.objects_callback = []
+
+    @abstractmethod
+    def setup(self):
+        pass
+
+    def add_shearable_rod(
+        self,
+        n_elem: int,
+        start: np.ndarray,
+        direction: np.ndarray,
+        normal: np.ndarray,
+        base_length: float,
+        base_radius: float,
+        density: float,
+        youngs_modulus: float,
+        shear_modulus: float,
+    ):
+        self.shearable_rod = ea.CosseratRod.straight_rod(
+            n_elem,
+            start,
+            direction,
+            normal,
+            base_length,
+            base_radius,
+            density,
+            youngs_modulus=youngs_modulus,
+            shear_modulus=shear_modulus,
+        )
+        self.simulator.append(self.shearable_rod)
+
+    def add_sphere(
+        self,
+        center: np.ndarray,
+        radius: float,
+        density: float,
+    ):
+        """
+        Add a sphere to the environment.
+
+        Args:
+            center (np.ndarray): Center of the sphere.
+            radius (float): Radius of the sphere.
+        """
+        sphere = ea.Sphere(center, radius, density=density)
+        self.simulator.append(sphere)
+
+        self.objects.append(sphere)
+        self.object2id[sphere] = len(self.objects) - 1
+        self.action_flags.append(False)
+        self.object_callbacks.append(ea.defaultdict(list))
+
+        if self.shearable_rod is not None:
+            self.simulator.constrain(sphere).using(
+                PinJoint,
+                other=self.shearable_rod,
+                index=-1,
+                flag=self.action_flags,
+                flag_id=self.object2id[sphere],
+            )
+
+    def add_cylinder(self):
+        pass
+
+    def _add_data_collection_callbacks(self, step_skip: int):
+        if self.shearable_rod is not None:
+            self.simulator.collect_diagnostics(self.shearable_rod).using(
+                RodCallBack,
+                step_skip=step_skip,
+                callback_params=self.rod_callback)
+
+        for object_ in self.objects:
+            self.simulator.collect_diagnostics(object_).using(
+                RigidBodyCallBack,
+                step_skip=step_skip,
+                callback_params=self.object_callbacks[self.object2id[object_]])
+
+    def visualize_2d(
+            self,
+            video_name="video.mp4",
+            fps=15,
+            xlim=(0, 4),
+            ylim=(-1, 1),
+    ):
+
+        positions_over_time = np.array(self.rod_callback["position"])
+        object_positions = [
+            np.array(params["position"]) for params in self.object_callbacks
+        ]
+
+        print("plot video")
+        FFMpegWriter = animation.writers["ffmpeg"]
+        metadata = dict(title="Movie Test",
+                        artist="Matplotlib",
+                        comment="Movie support!")
+        writer = FFMpegWriter(fps=fps, metadata=metadata)
+        fig = plt.figure(figsize=(10, 8), frameon=True, dpi=150)
+        ax = fig.add_subplot(111)
+        ax.set_xlim(*xlim)
+        ax.set_ylim(*ylim)
+        ax.set_xlabel("z [m]", fontsize=16)
+        ax.set_ylabel("x [m]", fontsize=16)
+        rod_lines_2d = ax.plot(positions_over_time[0][2],
+                               positions_over_time[0][0])[0]
+
+        # 初始化一个变量来保存当前的圆形对象
+        object_plots = [None for _ in range(len(self.objects))]
+
+        with writer.saving(fig, video_name, dpi=150):
+            for time in tqdm(range(1, len(self.rod_callback["time"]))):
+                # 更新杆的位置
+                rod_lines_2d.set_xdata(positions_over_time[time][2])
+                rod_lines_2d.set_ydata(positions_over_time[time][0])
+
+                # 移除旧的圆形（如果存在）
+                for idx, obj in enumerate(self.objects):
+                    if object_plots[idx] is not None:
+                        object_plots[idx].remove()
+
+                    if isinstance(obj, ea.Sphere):
+                        # 添加新的圆形
+                        center_x = object_positions[idx][time][2]
+                        center_y = object_positions[idx][time][0]
+                        radius = obj.radius[0]
+                        object_plots[idx] = plt.Circle((center_x, center_y),
+                                                       radius,
+                                                       edgecolor='b',
+                                                       facecolor='lightblue')
+                        ax.add_patch(object_plots[idx])
+
+                # 捕捉当前帧
+                writer.grab_frame()
+
+        # 关闭图形
+        plt.close(plt.gcf())
