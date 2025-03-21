@@ -13,9 +13,6 @@ pip install -r requirements.txt
 
 ## grab ball
 
-
-要在markdown中嵌入视频，请使用以下语法：
-
 <video width="640" height="360" controls>
   <source src="videos/2d.mp4" type="video/mp4">
   Your browser does not support the video tag.

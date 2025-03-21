@@ -179,4 +179,6 @@ Data
 DeepSpeed
 DeepSpeed/
 *.pth
+# Ignore all .mp4 files except those in the videos directory
 *.mp4
+!videos/*.mp4
