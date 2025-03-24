@@ -31,7 +31,7 @@ def run_simulation(env: GrabBallEnvironment) -> bool:
                         env.uniform_force[-1] = -1
             else:
                 counter += 1
-            if counter >= 1000:
+            if counter >= 10000:
                 for i in range(len(env.action_flags)):
                     env.action_flags[i] = False
                     env.uniform_force[-1] = 0
