@@ -20,12 +20,21 @@ def run_simulation(env: GrabBallEnvironment) -> bool:
     # Use tqdm to create a progress bar
     progress_steps = range(0, total_steps, update_interval)
     with tqdm(total=total_steps, desc="Simulation Progress") as pbar:
+        counter = 0
         for _ in progress_steps:
             if not any(env.action_flags):
                 for idx, object_ in enumerate(env.objects):
-                    if is_contact(object_, env.shearable_rod) and idx == 0:
+                    if is_contact(
+                            object_,
+                            env.shearable_rod) and idx == 0 and counter == 0:
                         env.action_flags[idx] = True
                         env.uniform_force[-1] = -1
+            else:
+                counter += 1
+            if counter >= 1000:
+                for i in range(len(env.action_flags)):
+                    env.action_flags[i] = False
+                    env.uniform_force[-1] = 0
             env.step()
             pbar.update(1)
 
