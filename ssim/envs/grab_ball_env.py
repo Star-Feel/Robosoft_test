@@ -9,7 +9,7 @@ from elastica import PositionVerlet
 from elastica._calculus import _isnan_check
 from elastica.timestepper import extend_stepper_interface
 
-from ..components.contact import JoinableRodSphereContactt
+from ..components.contact import JoinableRodSphereContact
 
 from ..arguments import (RodArguments, SimulatorArguments, SphereArguments,
                          SuperArguments)
@@ -78,7 +78,7 @@ class GrabBallEnvironment(RodObjectsEnvironment):
         for obj in self.objects:
             self.simulator.detect_contact_between(
                 self.shearable_rod,
-                obj).using(JoinableRodSphereContactt,
+                obj).using(JoinableRodSphereContact,
                            k=10,
                            nu=0,
                            velocity_damping_coefficient=1e3,

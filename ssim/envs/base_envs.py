@@ -86,14 +86,14 @@ class RodObjectsEnvironment(ABC):
         self.action_flags.append(False)
         self.object_callbacks.append(ea.defaultdict(list))
 
-        if self.shearable_rod is not None:
-            self.simulator.constrain(sphere).using(
-                PinJoint,
-                other=self.shearable_rod,
-                index=-1,
-                flag=self.action_flags,
-                flag_id=self.object2id[sphere],
-            )
+        # if self.shearable_rod is not None:
+        #     self.simulator.constrain(sphere).using(
+        #         PinJoint,
+        #         other=self.shearable_rod,
+        #         index=-1,
+        #         flag=self.action_flags,
+        #         flag_id=self.object2id[sphere],
+        #     )
 
     def add_cylinder(self):
         pass

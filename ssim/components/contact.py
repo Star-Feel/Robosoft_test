@@ -1,9 +1,9 @@
-__all__ = ["JoinableRodSphereContactt"]
+__all__ = ["JoinableRodSphereContact"]
 
-from elastica import RodSphereContact
+from elastica import RodSphereContact, RodType, AllowedContactType
 
 
-class JoinableRodSphereContactt(RodSphereContact):
+class JoinableRodSphereContact(RodSphereContact):
 
     def __init__(
         self,
@@ -38,6 +38,7 @@ class JoinableRodSphereContactt(RodSphereContact):
         self.index = index
         self.flag = flag
         self.flag_id = flag_id
+        self.relative_position = None
 
     def _check_systems_validity(
         self,
@@ -46,7 +47,8 @@ class JoinableRodSphereContactt(RodSphereContact):
     ) -> None:
         pass
 
-    def apply_contact(self, system_one, system_two) -> None:
+    def apply_contact(self, system_one: RodType,
+                      system_two: AllowedContactType) -> None:
         """
         Apply contact forces and torques between RodType object and Sphere object.
 
@@ -59,7 +61,17 @@ class JoinableRodSphereContactt(RodSphereContact):
 
         """
         if not self.flag[self.flag_id]:
+            self.relative_position = None
             super().apply_contact(system_one, system_two)
         else:
-            system_two.position_collection[
-                ..., 0] = system_one.position_collection[..., self.index]
+            if self.relative_position is None:
+                self.relative_position = \
+                    system_two.position_collection[..., 0] - \
+                    system_one.position_collection[..., self.index]
+            else:
+                system_two.position_collection[..., 0] = \
+                    system_one.position_collection[..., self.index] \
+                    + self.relative_position
+
+            system_two.velocity_collection[
+                ..., 0] = system_one.velocity_collection[..., self.index]
