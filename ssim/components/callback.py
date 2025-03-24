@@ -27,6 +27,7 @@ class RodCallBack(ea.CallBackBaseClass):
             self.callback_params["center_of_mass"].append(
                 system.compute_position_center_of_mass())
             self.callback_params["curvature"].append(system.kappa.copy())
+            self.callback_params["radius"].append(system.radius.copy())
 
 
 class RigidBodyCallBack(ea.CallBackBaseClass):
@@ -52,3 +53,4 @@ class RigidBodyCallBack(ea.CallBackBaseClass):
 
             self.callback_params["center_of_mass"].append(
                 system.compute_position_center_of_mass())
+            self.callback_params["radius"].append(system.radius.copy())
