@@ -182,3 +182,6 @@ DeepSpeed/
 # Ignore all .mp4 files except those in the videos directory
 *.mp4
 !videos/*.mp4
+*.pkl
+work_dirs
+work_dirs/
