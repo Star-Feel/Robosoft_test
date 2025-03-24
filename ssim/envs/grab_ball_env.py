@@ -102,10 +102,11 @@ class GrabBallEnvironment(RodObjectsEnvironment):
             damping_constant=damping_constant,
             time_step=self.time_step,
         )
-        for object_ in self.objects:
+        for idx, object_ in enumerate(self.objects):
+            dampen = 10000 if idx == 1 else 1
             self.simulator.dampen(object_).using(
                 RigidBodyAnalyticalLinearDamper,
-                damping_constant=1,
+                damping_constant=dampen,
                 time_step=self.time_step,
             )
 
