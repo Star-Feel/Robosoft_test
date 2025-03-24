@@ -45,7 +45,7 @@ def main():
 
     env.visualize_2d(video_name="2d.mp4", fps=env.rendering_fps)
     env.visualize_3d(video_name="3d.mp4", fps=env.rendering_fps)
-
+    env.export_callbacks("grab_ball_callbacks.pkl")
     return success
 
 

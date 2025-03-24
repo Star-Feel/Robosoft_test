@@ -1,5 +1,6 @@
 __all__ = ["RodObjectsEnvironment"]
 
+import pickle
 from abc import ABC, abstractmethod
 
 import elastica as ea
@@ -109,6 +110,28 @@ class RodObjectsEnvironment(ABC):
                 RigidBodyCallBack,
                 step_skip=step_skip,
                 callback_params=self.object_callbacks[self.object2id[object_]])
+
+    def export_callbacks(self, filename):
+        """
+        Export the collected callback data to a file.
+
+        Args:
+            filename (str): The name of the file to save the callback data.
+        """
+
+        callback_data = {
+            "deciption":
+            "rod is the softrobot, whose callback is a dict of positions,"
+            "velocities... \nobjects is all spheres, whose callback is a list"
+            "of each object's callback",
+            "rod_callback":
+            self.rod_callback,
+            "object_callbacks":
+            self.object_callbacks,
+        }
+
+        with open(filename, 'wb') as f:
+            pickle.dump(callback_data, f)
 
     def visualize_2d(
             self,
