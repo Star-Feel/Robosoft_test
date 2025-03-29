@@ -5,6 +5,7 @@ from typing import Optional, Sequence
 
 import elastica as ea
 import numpy as np
+from elastica.mesh.mesh_initializer import Mesh
 from elastica import PositionVerlet
 from elastica._calculus import _isnan_check
 from elastica.timestepper import extend_stepper_interface
@@ -15,7 +16,7 @@ from ..arguments import (RodArguments, SimulatorArguments, SphereArguments,
                          SuperArguments)
 from ..components import (ChangeableUniformForce,
                           RigidBodyAnalyticalLinearDamper,
-                          RodMeshSurfaceContactWithGridMethod)
+                          RodMeshSurfaceContactWithGridMethod, MeshRigidBody)
 from .base_envs import RodObjectsEnvironment
 
 
@@ -25,6 +26,32 @@ class GrabMeshArguments(SuperArguments):
     rod: RodArguments
     objects: Sequence[SphereArguments] = ()
     simulator: SimulatorArguments = None
+
+
+def initialize_cube_rigid_body():
+    """
+    This function is to initialize the cube rigid body from the cube.stl.
+    """
+    cube_mesh = Mesh("/data/zyw/workshop/PyElastica/tests/cube.stl")
+    center_of_mass = np.array([0.0, 0.0, 0.0])
+    base_length = 2
+    volume = base_length**3
+    density = 1.0
+    mass = density * volume
+    # Mass second moment of inertia for cube
+    mass_second_moment_of_inertia = np.zeros((3, 3), np.float64)
+    np.fill_diagonal(mass_second_moment_of_inertia,
+                     (mass * base_length**2) / 6)
+    cube_mesh_rigid_body = MeshRigidBody(cube_mesh, center_of_mass,
+                                         mass_second_moment_of_inertia,
+                                         density, volume)
+    return (
+        cube_mesh_rigid_body,
+        cube_mesh,
+        center_of_mass,
+        mass,
+        mass_second_moment_of_inertia,
+    )
 
 
 class GrabMeshEnvironment(RodObjectsEnvironment):
@@ -135,6 +162,16 @@ class GrabMeshEnvironment(RodObjectsEnvironment):
                              faces_grid=faces_grid,
                              grid_size=grid_size,
                              surface_tol=surface_tol)
+        # self.cube_rigid = initialize_cube_rigid_body()[0]
+        # self.simulator.append(self.cube_rigid)
+        # self.simulator.detect_contact_between(
+        #     self.shearable_rod,
+        #     self.cube_rigid).using(RodMeshSurfaceContactWithGridMethod,
+        #                      k=k,
+        #                      nu=nu,
+        #                      faces_grid=faces_grid,
+        #                      grid_size=grid_size,
+        #                      surface_tol=surface_tol)
 
         callback_step_skip = int(
             1.0 / (self.sim_config.rendering_fps * self.time_step))
