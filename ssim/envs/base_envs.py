@@ -28,6 +28,7 @@ class RodObjectsEnvironment(ABC):
 
         self.objects = []
         self.action_flags = []
+        self.attachable_flags = []
         self.object2id = {}
         self.object_callbacks = []
 
@@ -84,6 +85,7 @@ class RodObjectsEnvironment(ABC):
         self.objects.append(sphere)
         self.object2id[sphere] = len(self.objects) - 1
         self.action_flags.append(False)
+        self.attachable_flags.append(False)
         self.object_callbacks.append(ea.defaultdict(list))
 
         # if self.shearable_rod is not None:
