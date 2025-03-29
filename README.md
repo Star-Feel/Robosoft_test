@@ -10,7 +10,11 @@ pip install pyelastica
 pip install -r requirements.txt
 
 ```
+适配mesh surface
+注释掉elastica/modules/contact.py中第67-75行contact合法性检验
 
+适配 mesh rigid
+注释掉 elastica/memory_block/memory_block_rigid_body.py 第48-49行
 ## grab ball
 
 <div style="text-align: center;">
