@@ -15,7 +15,8 @@ import numpy as np
 
 def find_contact_faces_idx(faces_grid, x_min, y_min, grid_size,
                            position_collection):
-    element_position = elastica.contact_utils._node_to_element_position(position_collection)
+    element_position = elastica.contact_utils._node_to_element_position(
+        position_collection)
     n_element = element_position.shape[-1]
     position_idx_array = np.empty((0))
     face_idx_array = np.empty((0))
@@ -115,7 +116,7 @@ def surface_grid(faces, grid_size):
                            face_y_down, face_y_up))
 
 
-# @numba.njit(cache=True)
+@numba.njit(cache=True, nopython=True)
 def _calculate_contact_forces_rod_mesh_surface(
     faces_normals: np.ndarray,
     faces_centers: np.ndarray,
@@ -216,7 +217,8 @@ def _calculate_contact_forces_rod_mesh_surface(
             i]] += plane_response_force_contacts[:, i]
 
     # Update the external forces
-    elastica.contact_utils._elements_to_nodes_inplace(plane_response_forces, external_forces)
+    elastica.contact_utils._elements_to_nodes_inplace(plane_response_forces,
+                                                      external_forces)
     return (
         _batch_norm(plane_response_force_contacts),
         no_contact_point_idx,
@@ -308,7 +310,8 @@ class RodMeshSurfaceContactWithGridMethod(NoContact):
                 "Imported grid's model path does not match with the current mesh_surface model path. "
             )
 
-        elif not np.all(faces_grid["surface_reorient"] == system_two.mesh_orientation):
+        elif not np.all(
+                faces_grid["surface_reorient"] == system_two.mesh_orientation):
             raise TypeError(
                 "Imported grid's surface orientation does not match with the current mesh_surface rientation. "
             )
@@ -352,7 +355,7 @@ class RodMeshSurfaceContactWithGridMethod(NoContact):
             system_one.position_collection,
         )
 
-        return _calculate_contact_forces_rod_mesh_surface(
+        return  _calculate_contact_forces_rod_mesh_surface(
             self.mesh_surface_face_normals,
             self.mesh_surface_face_centers,
             self.element_position,

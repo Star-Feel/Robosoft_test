@@ -11,7 +11,8 @@ from elastica import (BaseSystemCollection, CallBacks, Connections,
 from matplotlib import animation
 from tqdm import tqdm
 
-from ..components import PinJoint, RigidBodyCallBack, RodCallBack
+from ..components import MeshSurface, RigidBodyCallBack, RodCallBack
+from ..components.callback import MeshSurfaceCallBack
 from ..visualize.visualizer import rod_objects_3d_visualize
 
 
@@ -100,6 +101,25 @@ class RodObjectsEnvironment(ABC):
     def add_cylinder(self):
         pass
 
+    def add_mesh_surface(self,
+                         mesh_path: str,
+                         center: np.ndarray = np.array([0., 0., 0.]),
+                         scale: np.ndarray = np.array([1., 1., 1.]),
+                         rotate: np.ndarray = np.array([0., 0., 0.])):
+        mesh = MeshSurface(mesh_path)
+        mesh.translate(center)
+        mesh.scale(scale)
+        mesh.rotate(np.array([1, 0, 0]), rotate[0])
+        mesh.rotate(np.array([0, 1, 0]), rotate[1])
+        mesh.rotate(np.array([0, 0, 1]), rotate[2])
+        self.simulator.append(mesh)
+
+        self.objects.append(mesh)
+        self.object2id[mesh] = len(self.objects) - 1
+        self.action_flags.append(False)
+        self.attachable_flags.append(False)
+        self.object_callbacks.append(ea.defaultdict(list))
+
     def _add_data_collection_callbacks(self, step_skip: int):
         if self.shearable_rod is not None:
             self.simulator.collect_diagnostics(self.shearable_rod).using(
@@ -108,10 +128,18 @@ class RodObjectsEnvironment(ABC):
                 callback_params=self.rod_callback)
 
         for object_ in self.objects:
-            self.simulator.collect_diagnostics(object_).using(
-                RigidBodyCallBack,
-                step_skip=step_skip,
-                callback_params=self.object_callbacks[self.object2id[object_]])
+            if isinstance(object_, ea.RigidBodyBase):
+                self.simulator.collect_diagnostics(object_).using(
+                    RigidBodyCallBack,
+                    step_skip=step_skip,
+                    callback_params=self.object_callbacks[
+                        self.object2id[object_]])
+            elif isinstance(object_, MeshSurface):
+                self.simulator.collect_diagnostics(object_).using(
+                    MeshSurfaceCallBack,
+                    step_skip=step_skip,
+                    callback_params=self.object_callbacks[
+                        self.object2id[object_]])
 
     def export_callbacks(self, filename):
         """

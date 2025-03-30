@@ -147,8 +147,18 @@ class RodArguments:
     poisson_ratio: float = field(default=0.5)
 
 
+@dataclass
+class MeshSurfaceArguments:
+
+    mesh_path: str
+    center: np.ndarray = field(default_factory=lambda: np.array([0., 0., 0.]))
+    scale: np.ndarray = field(default_factory=lambda: np.array([1., 1., 1.]))
+    rotate: np.ndarray = field(default_factory=lambda: np.array([0., 0., 0.]))
+
+
 args_dict = {
     "rod": RodArguments,
     "sphere": SphereArguments,
+    "mesh_surface": MeshSurfaceArguments,
     "simulator": SimulatorArguments,
 }

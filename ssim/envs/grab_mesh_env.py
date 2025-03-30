@@ -1,62 +1,39 @@
-__all__ = ["GrabMeshEnvironment", "GrabMeshArguments"]
+__all__ = [
+    "MeshDemoArguments",
+    "MeshDemoEnvironment",
+]
 
 from dataclasses import dataclass
-from typing import Optional, Sequence
+from typing import Sequence
 
 import elastica as ea
 import numpy as np
-from elastica.mesh.mesh_initializer import Mesh
-from elastica import PositionVerlet
+from elastica import PositionVerlet, RigidBodyBase
 from elastica._calculus import _isnan_check
 from elastica.timestepper import extend_stepper_interface
+from stl import mesh
 
-from ..components.contact import JoinableRodSphereContact
-from ..components.surface import MeshSurface
-from ..arguments import (RodArguments, SimulatorArguments, SphereArguments,
-                         SuperArguments)
+from ..arguments import (MeshSurfaceArguments, RodArguments,
+                         SimulatorArguments, SphereArguments, SuperArguments)
 from ..components import (ChangeableUniformForce,
                           RigidBodyAnalyticalLinearDamper,
-                          RodMeshSurfaceContactWithGridMethod, MeshRigidBody)
+                          RodMeshSurfaceContactWithGridMethod)
+from ..components.contact import JoinableRodSphereContact, surface_grid
+from ..components.surface.mesh_surface import MeshSurface
 from .base_envs import RodObjectsEnvironment
 
 
 @dataclass
-class GrabMeshArguments(SuperArguments):
+class MeshDemoArguments(SuperArguments):
 
     rod: RodArguments
-    objects: Sequence[SphereArguments] = ()
+    objects: Sequence[SphereArguments | MeshSurfaceArguments] = ()
     simulator: SimulatorArguments = None
 
 
-def initialize_cube_rigid_body():
-    """
-    This function is to initialize the cube rigid body from the cube.stl.
-    """
-    cube_mesh = Mesh("/data/zyw/workshop/PyElastica/tests/cube.stl")
-    center_of_mass = np.array([0.0, 0.0, 0.0])
-    base_length = 2
-    volume = base_length**3
-    density = 1.0
-    mass = density * volume
-    # Mass second moment of inertia for cube
-    mass_second_moment_of_inertia = np.zeros((3, 3), np.float64)
-    np.fill_diagonal(mass_second_moment_of_inertia,
-                     (mass * base_length**2) / 6)
-    cube_mesh_rigid_body = MeshRigidBody(cube_mesh, center_of_mass,
-                                         mass_second_moment_of_inertia,
-                                         density, volume)
-    return (
-        cube_mesh_rigid_body,
-        cube_mesh,
-        center_of_mass,
-        mass,
-        mass_second_moment_of_inertia,
-    )
+class MeshDemoEnvironment(RodObjectsEnvironment):
 
-
-class GrabMeshEnvironment(RodObjectsEnvironment):
-
-    def __init__(self, configs: GrabMeshArguments):
+    def __init__(self, configs: MeshDemoArguments):
         super().__init__()
         self.rod_config = configs.rod
         self.object_configs = configs.objects
@@ -97,6 +74,13 @@ class GrabMeshEnvironment(RodObjectsEnvironment):
                     radius=object_config.radius,
                     density=object_config.density,
                 )
+            elif isinstance(object_config, MeshSurfaceArguments):
+                self.add_mesh_surface(
+                    object_config.mesh_path,
+                    object_config.center,
+                    object_config.scale,
+                    object_config.rotate
+                )
 
         self.simulator.add_forcing_to(self.shearable_rod).using(
             ChangeableUniformForce,
@@ -104,25 +88,34 @@ class GrabMeshEnvironment(RodObjectsEnvironment):
         )
 
         for obj in self.objects:
-            self.simulator.detect_contact_between(
-                self.shearable_rod,
-                obj).using(JoinableRodSphereContact,
-                           k=10,
-                           nu=0,
-                           velocity_damping_coefficient=1e3,
-                           friction_coefficient=10,
-                           flag=self.action_flags,
-                           flag_id=self.object2id[obj])
-
-        # for i in range(len(self.objects)):
-        #     for j in range(i + 1, len(self.objects)):
-        #         self.simulator.detect_contact_between(
-        #             self.objects[i], self.objects[j]).using(
-        #                 ea.SphereSphereContact,
-        #                 k=10,
-        #                 nu=0,
-        #                 velocity_damping_coefficient=1e3,
-        #                 friction_coefficient=10)
+            if isinstance(obj, ea.Sphere):
+                self.simulator.detect_contact_between(
+                    self.shearable_rod,
+                    obj).using(JoinableRodSphereContact,
+                               k=10,
+                               nu=0,
+                               velocity_damping_coefficient=1e3,
+                               friction_coefficient=10,
+                               flag=self.action_flags,
+                               flag_id=self.object2id[obj])
+            elif isinstance(obj, MeshSurface):
+                mesh_data = mesh.Mesh.from_file(obj.model_path)
+                grid_size = 0.1  # 网格大小
+                faces_grid = surface_grid(mesh_data.vectors, grid_size)
+                faces_grid["model_path"] = obj.model_path
+                faces_grid["grid_size"] = grid_size
+                faces_grid["surface_reorient"] = obj.mesh_orientation
+                k = 1e4  # 接触刚度系数
+                nu = 10  # 阻尼系数
+                surface_tol = 1e-2
+                self.simulator.detect_contact_between(
+                    self.shearable_rod,
+                    obj).using(RodMeshSurfaceContactWithGridMethod,
+                               k=k,
+                               nu=nu,
+                               faces_grid=faces_grid,
+                               grid_size=grid_size,
+                               surface_tol=surface_tol)
 
         damping_constant = 2e-2
         self.simulator.dampen(self.shearable_rod).using(
@@ -130,48 +123,14 @@ class GrabMeshEnvironment(RodObjectsEnvironment):
             damping_constant=damping_constant,
             time_step=self.time_step,
         )
-        for idx, object_ in enumerate(self.objects):
-            dampen = 10000 if idx == 1 else 1
-            self.simulator.dampen(object_).using(
-                RigidBodyAnalyticalLinearDamper,
-                damping_constant=dampen,
-                time_step=self.time_step,
-            )
-
-        self.cube = MeshSurface("/data/zyw/workshop/PyElastica/tests/cube.stl")
-        self.cube.translate(np.array([0, 0, 2]))
-        self.simulator.append(self.cube)
-        from stl import mesh
-        mesh_data = mesh.Mesh.from_file(
-            "/data/zyw/workshop/PyElastica/tests/cube.stl")
-        # self.cube.visualize()
-        from ssim.components.contact import surface_grid
-        grid_size = 0.1  # 网格大小
-        faces_grid = surface_grid(mesh_data.vectors, grid_size)
-        faces_grid["model_path"] = self.cube.model_path
-        faces_grid["grid_size"] = grid_size
-        faces_grid["surface_reorient"] = self.cube.mesh_orientation
-        k = 1e4  # 接触刚度系数
-        nu = 10  # 阻尼系数
-        surface_tol = 1e-2
-        self.simulator.detect_contact_between(
-            self.shearable_rod,
-            self.cube).using(RodMeshSurfaceContactWithGridMethod,
-                             k=k,
-                             nu=nu,
-                             faces_grid=faces_grid,
-                             grid_size=grid_size,
-                             surface_tol=surface_tol)
-        # self.cube_rigid = initialize_cube_rigid_body()[0]
-        # self.simulator.append(self.cube_rigid)
-        # self.simulator.detect_contact_between(
-        #     self.shearable_rod,
-        #     self.cube_rigid).using(RodMeshSurfaceContactWithGridMethod,
-        #                      k=k,
-        #                      nu=nu,
-        #                      faces_grid=faces_grid,
-        #                      grid_size=grid_size,
-        #                      surface_tol=surface_tol)
+        for _, object_ in enumerate(self.objects):
+            if isinstance(object_, RigidBodyBase):
+                dampen = 1
+                self.simulator.dampen(object_).using(
+                    RigidBodyAnalyticalLinearDamper,
+                    damping_constant=dampen,
+                    time_step=self.time_step,
+                )
 
         callback_step_skip = int(
             1.0 / (self.sim_config.rendering_fps * self.time_step))
