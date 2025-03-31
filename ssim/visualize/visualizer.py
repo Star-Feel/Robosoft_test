@@ -304,12 +304,16 @@ def create_3d_animation(
 
 
 def rod_objects_3d_visualize(
-        position_rod: np.ndarray,
-        position_objects: list[np.ndarray],
-        objects: list,  # 新增球体半径参数
-        save_path=None,
-        fps=30,
-        skip=1):
+    position_rod: np.ndarray,
+    position_objects: list[np.ndarray],
+    objects: list,  # 新增球体半径参数
+    save_path=None,
+    fps=30,
+    skip=1,
+    xlim=None,
+    ylim=None,
+    zlim=None,
+):
     """
     Create and save a 3D animation of the rod motion with sphere
 
@@ -349,9 +353,9 @@ def rod_objects_3d_visualize(
     z_max += margin * z_range
 
     # Set axis limits and labels
-    ax.set_xlim(-4, 4)
-    ax.set_ylim(-4, 4)
-    ax.set_zlim(-4, 4)
+    ax.set_xlim(xlim if xlim is not None else (x_min, x_max))
+    ax.set_ylim(ylim if ylim is not None else (y_min, y_max))
+    ax.set_zlim(zlim if zlim is not None else (z_min, z_max))
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
@@ -415,7 +419,7 @@ def rod_objects_3d_visualize(
         # 更新时间显示
         time_text.set_text(time_template % (frame / fps))
 
-        return line, sphere_surface, time_text
+        return line, time_text
 
     progress_callback = tqdm(total=num_frames // skip,
                              desc="Generating frames")

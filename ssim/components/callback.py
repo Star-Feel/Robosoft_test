@@ -5,6 +5,7 @@ __all__ = [
 ]
 
 import elastica as ea
+import numpy as np
 
 
 class RodCallBack(ea.CallBackBaseClass):
@@ -76,7 +77,8 @@ class MeshSurfaceCallBack(ea.CallBackBaseClass):
 
             self.callback_params["time"].append(time)
             self.callback_params["step"].append(current_step)
-            self.callback_params["position"].append(system.mesh_center.copy())
+            self.callback_params["position"].append(
+                np.array(system.mesh_center.copy())[..., None])
             self.callback_params["orientation"].append(
                 system.mesh_orientation.copy())
             self.callback_params["scale"].append(system.mesh_scale.copy())

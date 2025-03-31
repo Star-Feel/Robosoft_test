@@ -222,11 +222,15 @@ class RodObjectsEnvironment(ABC):
         # 关闭图形
         plt.close(plt.gcf())
 
-    def visualize_3d(self, video_name, fps):
+    def visualize_3d(self, video_name, fps, xlim=None, ylim=None, zlim=None):
         rod_objects_3d_visualize(
             np.array(self.rod_callback["position"]),
             [np.array(params["position"]) for params in self.object_callbacks],
             self.objects,
             video_name,
             fps,
+            1,
+            xlim,
+            ylim,
+            zlim,
         )
