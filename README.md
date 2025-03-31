@@ -15,6 +15,13 @@ pip install -r requirements.txt
 
 适配 mesh rigid
 注释掉 elastica/memory_block/memory_block_rigid_body.py 第48-49行
+
+RodMeshSurfaceContact jit加速数据类型不对齐bug
+elastica/mesh/mesh_initializer.py 第92行，修改为
+```python
+self.face_normals = self.face_normal_calculation(self.mesh.face_normals.astype(np.float64))
+```
+
 ## grab ball
 
 <div style="text-align: center;">
