@@ -109,12 +109,7 @@ class GrabBallEnvironment(RodObjectsEnvironment):
         # Add callbacks for data collection if enabled
         self._add_data_collection_callbacks(callback_step_skip)
 
-        # Finalize the simulator
-        self.simulator.finalize()
-
-        # Prepare for time stepping
-        self.do_step, self.stages_and_updates = extend_stepper_interface(
-            self.stateful_stepper, self.simulator)
+        self._finalize()
 
         return self
 

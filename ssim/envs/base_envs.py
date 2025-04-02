@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from elastica import (BaseSystemCollection, CallBacks, Connections,
                       Constraints, Contact, Damping, Forcing, PositionVerlet)
+from elastica.timestepper import extend_stepper_interface
 from matplotlib import animation
 from tqdm import tqdm
 
@@ -53,8 +54,18 @@ class SimulateMixin:
             self.time_step,
         )
 
+    def _finalize(self):
+        # Finalize the simulator
+        self.simulator.finalize()
+
+        # Prepare for time stepping
+        self.do_step, self.stages_and_updates = extend_stepper_interface(
+            self.stateful_stepper, self.simulator)
+
 
 class RodObjectsMixin:
+
+    simulator: BaseSimulator
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
