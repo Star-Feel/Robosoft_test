@@ -1,20 +1,17 @@
 __all__ = ["GrabBallEnvironment", "GrabBallArguments"]
 
 from dataclasses import dataclass
-from typing import Optional
 
 import elastica as ea
 import numpy as np
-from elastica import PositionVerlet
 from elastica._calculus import _isnan_check
 from elastica.timestepper import extend_stepper_interface
-
-from ..components.contact import JoinableRodSphereContact
 
 from ..arguments import (RodArguments, SimulatorArguments, SphereArguments,
                          SuperArguments)
 from ..components import (ChangeableUniformForce,
                           RigidBodyAnalyticalLinearDamper)
+from ..components.contact import JoinableRodSphereContact
 from .base_envs import RodObjectsEnvironment
 
 
@@ -29,21 +26,18 @@ class GrabBallArguments(SuperArguments):
 class GrabBallEnvironment(RodObjectsEnvironment):
 
     def __init__(self, configs: GrabBallArguments):
-        super().__init__()
         self.rod_config = configs.rod
         self.object_configs = configs.objects
         self.sim_config = configs.simulator
 
-        self.stateful_stepper = PositionVerlet()
+        super().__init__(
+            final_time=self.sim_config.final_time,
+            time_step=self.sim_config.time_step,
+            update_interval=self.sim_config.update_interval,
+            rendering_fps=self.sim_config.rendering_fps,
+        )
 
         self.uniform_force = np.array([0, 0, 1])
-
-        self.total_steps = int(self.sim_config.final_time /
-                               self.sim_config.time_step)
-        self.time_step = np.float64(
-            float(self.sim_config.final_time) / self.total_steps)
-        self.rendering_fps = self.sim_config.rendering_fps
-        self.time_tracker = np.float64(0.0)
 
     def setup(self):
 
@@ -126,13 +120,7 @@ class GrabBallEnvironment(RodObjectsEnvironment):
 
     def step(self, num_steps: int = 1):
         for _ in range(num_steps):
-            self.time_tracker = self.do_step(
-                self.stateful_stepper,
-                self.stages_and_updates,
-                self.simulator,
-                self.time_tracker,
-                self.time_step,
-            )
+            self._do_step()
 
             if _isnan_check(self.shearable_rod.position_collection):
                 print("NaN detected, simulation is unstable")

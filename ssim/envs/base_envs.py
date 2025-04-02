@@ -7,7 +7,7 @@ import elastica as ea
 import matplotlib.pyplot as plt
 import numpy as np
 from elastica import (BaseSystemCollection, CallBacks, Connections,
-                      Constraints, Contact, Damping, Forcing)
+                      Constraints, Contact, Damping, Forcing, PositionVerlet)
 from matplotlib import animation
 from tqdm import tqdm
 
@@ -22,9 +22,43 @@ class BaseSimulator(BaseSystemCollection, Constraints, Connections, Forcing,
     pass
 
 
-class RodObjectsEnvironment(ABC):
+class SimulateMixin:
 
-    def __init__(self):
+    def __init__(self,
+                 *args,
+                 final_time: float,
+                 time_step: int,
+                 update_interval: int = 1,
+                 rendering_fps: int = 60,
+                 **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.simulator = BaseSimulator()
+
+        self.final_time = final_time
+        self.time_step = time_step
+        self.update_interval = update_interval
+        self.rendering_fps = rendering_fps
+        self.stateful_stepper = PositionVerlet()
+        self.total_steps = int(final_time / time_step)
+        self.time_step = np.float64(float(final_time) / self.total_steps)
+        self.time_tracker = np.float64(0.0)
+
+    def _do_step(self):
+        self.time_tracker = self.do_step(
+            self.stateful_stepper,
+            self.stages_and_updates,
+            self.simulator,
+            self.time_tracker,
+            self.time_step,
+        )
+
+
+class RodObjectsMixin:
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
         self.shearable_rod = None
 
         self.objects = []
@@ -33,14 +67,8 @@ class RodObjectsEnvironment(ABC):
         self.object2id = {}
         self.object_callbacks = []
 
-        self.simulator = BaseSimulator()
-
         self.rod_callback = ea.defaultdict(list)
         self.objects_callback = []
-
-    @abstractmethod
-    def setup(self):
-        pass
 
     def add_shearable_rod(
         self,
@@ -234,3 +262,15 @@ class RodObjectsEnvironment(ABC):
             ylim,
             zlim,
         )
+
+
+class RodObjectsEnvironment(SimulateMixin, RodObjectsMixin, ABC):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @abstractmethod
+    def setup(self):
+        pass
+
+

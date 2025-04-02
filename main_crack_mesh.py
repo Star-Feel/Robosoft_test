@@ -3,9 +3,9 @@ import os
 
 from tqdm import tqdm
 
-from ssim.envs import MeshDemoEnvironment, MeshDemoArguments
-from ssim.utils import is_contact
 from ssim.components.surface.mesh_surface import MeshSurface
+from ssim.envs import MeshDemoArguments, MeshDemoEnvironment
+from ssim.utils import is_contact
 
 
 def run_simulation(env: MeshDemoEnvironment) -> bool:

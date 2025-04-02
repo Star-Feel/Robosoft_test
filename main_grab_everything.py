@@ -1,12 +1,10 @@
 import os
-from turtle import update
+import random
 
 from tqdm import tqdm
 
-from ssim.envs import SoftGrabEnvironment, SoftGrabArguments
+from ssim.envs import SoftGrabArguments, SoftGrabEnvironment
 from ssim.utils import is_contact
-from ssim.components.surface.mesh_surface import MeshSurface
-import random
 
 
 def run_simulation(env: SoftGrabEnvironment) -> bool:
