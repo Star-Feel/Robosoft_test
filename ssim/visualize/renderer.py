@@ -95,16 +95,16 @@ class POVRayRenderer:
         # Convert data to numpy array
         xs = np.array(data["rod_position"])  # shape: (3, num_element)
 
-        rob_radius = np.array(data["rod_radius"])
+        rod_radius = np.array(data["rod_radius"])
         # If the data contains multiple rod, this part can be modified to include
         # multiple rods.
         rod_object = pyelastica_rod(
             x=xs,
-            r=rob_radius,
+            r=rod_radius,
             color="rgb<0.45,0.39,1>",
         )
 
-        self.fpv_update(xs, rob_radius)
+        self.fpv_update(xs, rod_radius)
         _stage_scripts = self._stages.generate_scripts()
 
         # Make Directory for each camera
