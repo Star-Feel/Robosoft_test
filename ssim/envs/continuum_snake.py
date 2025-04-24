@@ -10,6 +10,8 @@ from ..arguments import (RodArguments, SimulatorArguments, SphereArguments,
                          SuperArguments)
 from .base_envs import RodObjectsEnvironment
 
+from new_forces import ChangeableMuscleTorques
+
 
 @dataclass
 class ContinuumSnakeArguments(SuperArguments):
@@ -67,7 +69,7 @@ class ContinuumSnakeEnvironment(RodObjectsEnvironment):
 
         wave_length = b_coeff[-1]
         self.simulator.add_forcing_to(self.shearable_rod).using(
-            ea.MuscleTorques,
+            ChangeableMuscleTorques,
             base_length=self.rod_config.base_length,
             b_coeff=b_coeff[:-1],
             period=period,
