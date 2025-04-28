@@ -19,7 +19,7 @@ class ChangeableMuscleTorques(MuscleTorques):
         sign = np.sign(np.sin(angular_frequency * time - wave_number * s + phase_shift))
         self.amplitude = 1 + sign * amplitude_factor
     
-    def update_phase_shift(self, time, start_time=2.5, end_time=5.0, turn_left:str=False):
+    def update_phase_shift(self, time, start_time=2.5, end_time=7.5, turn_left:str=False):
         sign = np.sign(np.sin(self.angular_frequency * time - self.wave_number * self.s + self.phase_shift))
         if time < start_time:
             self.phase_shift = np.zeros_like(self.my_spline)
@@ -33,7 +33,8 @@ class ChangeableMuscleTorques(MuscleTorques):
             self.phase_shift =  direction * self.causal_mask * sign * np.pi/6
 
     def apply_torques(self, rod, time):
-        self.update_phase_shift(time)
+        self.update_phase_shift(time, start_time=2.5, end_time=10, turn_left=False)
+        self.update_phase_shift(time, start_time=12.5, end_time=17.5, turn_left=True)
 
         self.compute_muscle_torques(
             time,

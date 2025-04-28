@@ -185,3 +185,4 @@ DeepSpeed/
 *.pkl
 work_dirs
 work_dirs/
+videos
