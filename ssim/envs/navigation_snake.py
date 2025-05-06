@@ -26,7 +26,7 @@ class NavigationSnakeEnvironment(RodObjectsEnvironment):
     def __init__(self, configs: NavigationSnakeArguments):
         self.rod_config = configs.rod
         self.sim_config = configs.simulator
-        self.object_configs = configs.objects
+        self.object_configs = configs.objects if configs.objects else []
 
         super().__init__(
             final_time=self.sim_config.final_time,

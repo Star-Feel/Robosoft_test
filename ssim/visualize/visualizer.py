@@ -445,3 +445,41 @@ def rod_objects_3d_visualize(
 
     plt.close()
     return anim
+
+
+def plot_contour(
+    positions: np.ndarray,
+    xlim=None,
+    ylim=None,
+    levels=50,
+    save_path=None,
+):
+    """
+    Plot a simple 2D line plot based on positions.
+
+    Args:
+        positions: 2D coordinates of shape (time_steps, n_points, 2).
+        xlim: Tuple specifying x-axis limits (optional).
+        ylim: Tuple specifying y-axis limits (optional).
+    """
+    # Extract x and y coordinates
+    x = positions[:, :, 0]
+    y = positions[:, :, 1]
+
+    # Plot the positions as a simple line plot
+    plt.figure(figsize=(8, 6))
+    for i in range(x.shape[1]):
+        plt.plot(x[:, i], y[:, i], label=f"Point {i + 1}")
+    plt.xlabel("X")
+    plt.ylabel("Y")
+    plt.title("2D Trajectory Plot")
+    # plt.legend()
+
+    # Set axis limits if provided
+    if xlim:
+        plt.xlim(xlim)
+    if ylim:
+        plt.ylim(ylim)
+
+    if save_path:
+        plt.savefig(save_path, dpi=300)
