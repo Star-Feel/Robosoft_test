@@ -1,10 +1,10 @@
 import os
 
 from tqdm import tqdm
-from ssim.envs import ContinuumSnakeEnvironment, ContinuumSnakeArguments
+from ssim.envs import NavigationSnakeEnvironment, NavigationSnakeArguments
 
 
-def run_simulation(env: ContinuumSnakeEnvironment) -> bool:
+def run_simulation(env: NavigationSnakeEnvironment) -> bool:
 
     # Get update interval from simulator configuration
     update_interval = env.sim_config.update_interval
@@ -29,9 +29,9 @@ def main():
 
     config_path = "./ssim/configs/continuum_snake.yaml"
     os.chdir('.')
-    configs = ContinuumSnakeArguments.from_yaml(config_path)
+    configs = NavigationSnakeArguments.from_yaml(config_path)
 
-    env = ContinuumSnakeEnvironment(configs)
+    env = NavigationSnakeEnvironment(configs)
 
     env.setup()
     success = run_simulation(env)
