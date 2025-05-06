@@ -36,6 +36,22 @@ class BlenderRenderer:
         env_light.data.energy = 1.0  
         env_light.data.color = (0.5, 0.5, 0.5)  # 灰色光
 
+        # scene settings
+        scene = bpy.context.scene
+        scene.render.engine = 'BLENDER_EEVEE_NEXT'                     # 使用 Eevee 引擎
+        scene.eevee.use_gtao = True                               # 开启AO。（默认AO是关闭的）
+        scene.render.image_settings.file_format = 'PNG'           # 保存格式 png
+        scene.render.image_settings.color_mode = 'RGB'            # 保存 RGB 通道，不要alpha通道
+        scene.render.image_settings.color_depth = '8'             # 8位颜色
+        scene.display_settings.display_device = 'sRGB'            # 窗口显示时，使用sRGB颜色格式编码
+        scene.view_settings.view_transform = 'Filmic'             # 窗口显示时，使用Filmic颜色变换
+        scene.sequencer_colorspace_settings.name = 'Filmic sRGB'  # 保存图片时使用 Filmmic + sRGB
+        scene.render.film_transparent = False                     # 背景不透明（纯色或者环境光贴图）
+        scene.render.resolution_percentage = 50
+        scene.eevee.taa_render_samples = 8
+        scene.eevee.taa_samples = 0
+        scene.eevee.gi_diffuse_bounces = 0
+
     @staticmethod
     def coord_pov2blend(x, y, z):
         x_prime = -z 
@@ -213,26 +229,27 @@ class BlenderRenderer:
                     curve_obj.data.materials.append(material)
 
     def render(self):
-        # 保存 Blend 文件
-        pov_index = os.path.splitext(self.pov_file)[0].split('/')[-1]
-        output_blend =  os.path.splitext(self.pov_file)[0] + ".blend"
-        bpy.ops.wm.save_as_mainfile(filepath=output_blend)
-        print(f"转换完成。已保存为：{output_blend}")
+        bpy.context.scene.camera = bpy.data.objects['Camera']
+        bpy.context.scene.frame_set(0)
 
-        # 渲染图像
-        blender_cli = f"blender -b {output_blend} -o renders/{pov_index} -f 1"
-        subprocess.run(blender_cli, shell=True)
+        bpy.ops.render.render()
+        bpy.data.images["Render Result"].save_render(f"renders/frame_000000.png")
 
 
 if __name__ == "__main__":
     # POV 文件路径
     import time
-    start_time = time.time()
-    pov_file = "/home/wrp/SoftRoboticaSimulator/work_dirs/povray_continuum_snake/diag/frame_00300.pov"
+    pov_dir = "/home/wrp/SoftRoboticaSimulator/work_dirs/povray_continuum_snake/diag"
+    pov_file = "/home/wrp/SoftRoboticaSimulator/work_dirs/povray_continuum_snake/diag/frame_00000.pov"
     obj_path = "/home/wrp/SoftRoboticaSimulator/assets/lamed_chair/Lamed_chair.obj"
 
     pov_settings = BlenderRenderer()
+    start_time = time.time()
     pov_settings.load_pov_settings(pov_file, obj_path)
+    
+    s_time = time.time()
     pov_settings.render()
+    print("render time: ", time.time() - s_time)
+    
     end_time = time.time()
     print(f"运行时间: {end_time - start_time:.2f}秒")
