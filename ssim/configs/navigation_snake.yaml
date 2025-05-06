@@ -3,22 +3,33 @@ objects:
     center: [0.0, 0.0, 1.5]
     radius: 0.1
     density: 1.0
+    shape: sphere
+    color: green
   - type: sphere
     center: [-1, 0.0, 2.5]
     radius: 0.5
     density: 1.0
+    shape: sphere
+    color: green
   - type: sphere
     center: [-0.5, 0.0, 2.]
     radius: 0.1
     density: 1.0
+    shape: sphere
+    color: green
   - type: sphere
     center: [0.75, 0.0, 3]
     radius: 0.25
     density: 1.0
+    shape: sphere
+    color: green
   - type: sphere
     center: [0, 0.0, 3.5]
     radius: 0.05
     density: 1.0
+    shape: sphere
+    color: green
+
 
 rod:
   n_elem: 20

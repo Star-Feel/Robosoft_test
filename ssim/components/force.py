@@ -82,7 +82,7 @@ class ChangeableMuscleTorques(MuscleTorques):
     def apply_torques(self, rod, time):
         self.update_phase_shift(time, self.turn[0])
 
-        torque = self.compute_muscle_torques(
+        time, torque = self.compute_muscle_torques(
             time,
             self.my_spline,
             self.s,
@@ -96,7 +96,7 @@ class ChangeableMuscleTorques(MuscleTorques):
             self.amplitude,
         )
         if self.callbacks is not None:
-            self.callbacks.append(torque)
+            self.callbacks.append((time, torque))
 
     @staticmethod
     @njit(cache=True)
@@ -134,4 +134,4 @@ class ChangeableMuscleTorques(MuscleTorques):
             external_torques[..., :-1],
             _batch_matvec(director_collection[..., :-1], torque[..., 1:]),
         )
-        return torque
+        return time, torque

@@ -36,9 +36,9 @@ class NavigationSnakeEnvironment(RodObjectsEnvironment):
         )
 
         self.turn = [ChangeableMuscleTorques.DIRECT]
-        self.torque_callbacks = []
+        self.torque_callback = []
 
-    def setup(self):
+    def setup(self, callback_step_skip: int = -1):
         shear_modulus = self.rod_config.youngs_modulus / (
             self.rod_config.poisson_ratio + 1.0)
 
@@ -75,7 +75,7 @@ class NavigationSnakeEnvironment(RodObjectsEnvironment):
         self.simulator.add_forcing_to(self.shearable_rod).using(
             ChangeableMuscleTorques,
             turn=self.turn,
-            callbacks=self.torque_callbacks,
+            callbacks=self.torque_callback,
             base_length=self.rod_config.base_length,
             b_coeff=b_coeff[:-1],
             period=period,
@@ -117,7 +117,9 @@ class NavigationSnakeEnvironment(RodObjectsEnvironment):
         )
 
         callback_step_skip = int(
-            1.0 / (self.sim_config.rendering_fps * self.time_step))
+            1.0 /
+            (self.sim_config.rendering_fps *
+             self.time_step)) if callback_step_skip < 0 else callback_step_skip
         # Add callbacks for data collection if enabled
         self._add_data_collection_callbacks(callback_step_skip)
 
