@@ -10,10 +10,10 @@ import yaml
 sys.path.append("/data/zyw/workshop/attempt")
 from tqdm import tqdm
 from ssim.components import ChangeableMuscleTorques
-from ssim.envs import NavigationSnakeEnvironment, NavigationSnakeArguments
+from ssim.envs import NavigationSnakeActionEnvironment, NavigationSnakeArguments
 
 
-def run_simulation(env: NavigationSnakeEnvironment) -> bool:
+def run_simulation(env: NavigationSnakeActionEnvironment) -> bool:
 
     # Get update interval from simulator configuration
     update_interval = env.sim_config.update_interval
@@ -58,7 +58,7 @@ def main():
     config_path = "./ssim/configs/navigation_snake.yaml"
     configs = NavigationSnakeArguments.from_yaml(config_path)
 
-    env = NavigationSnakeEnvironment(configs)
+    env = NavigationSnakeActionEnvironment(configs)
 
     env.setup(1)
     env.set_target([0, 0.0, 3.5])

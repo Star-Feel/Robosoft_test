@@ -10,13 +10,14 @@ import yaml
 sys.path.append("/data/zyw/workshop/attempt")
 from tqdm import tqdm
 from ssim.components import ChangeableMuscleTorques
-from ssim.envs import NavigationSnakeEnvironment, NavigationSnakeArguments
+from ssim.envs import NavigationSnakeActionEnvironment, NavigationSnakeArguments
 from ssim.visualize.visualizer import plot_contour
 
 N = 100
 
 
-def run_simulation(env: NavigationSnakeEnvironment, actions: dict) -> bool:
+def run_simulation(env: NavigationSnakeActionEnvironment,
+                   actions: dict) -> bool:
 
     # Get update interval from simulator configuration
     update_interval = env.sim_config.update_interval
@@ -45,7 +46,8 @@ def generate_random_numbers(size: int):
     return np.array(sorted(np.random.choice(range(100), size, replace=False)))
 
 
-def export_state_action(env: NavigationSnakeEnvironment, output_dir: str):
+def export_state_action(env: NavigationSnakeActionEnvironment,
+                        output_dir: str):
     torque_callback = env.torque_callback
     rod_callback = env.rod_callback
     state_action = {
@@ -86,7 +88,7 @@ def main():
                 action_list.remove(last)
             last = np.random.choice(action_list)
             actions[int(time)] = last
-        env = NavigationSnakeEnvironment(configs)
+        env = NavigationSnakeActionEnvironment(configs)
         env.setup(1)
         run_simulation(env, actions)
 

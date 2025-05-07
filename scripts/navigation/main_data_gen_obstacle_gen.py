@@ -74,7 +74,8 @@ def main():
             state_action = pickle.load(f)
 
         positions = np.array(state_action["position"])
-        flattened_positions = positions.transpose(0, 2, 1).reshape(-1, 3)
+        flattened_positions = positions[::1000].transpose(0, 2,
+                                                          1).reshape(-1, 3)
         obstacles = gen_obstacles(flattened_positions, num_policy="random")
 
         # export obstacles configs
@@ -84,8 +85,9 @@ def main():
             x, y, z, radius = obstacle
             sphere = {
                 "type": "sphere",
-                "position": [x, y, z],
+                "center": [x, y, z],
                 "radius": radius,
+                "density": 1.0,
             }
             spheres.append(sphere)
         base_config["objects"] = spheres
