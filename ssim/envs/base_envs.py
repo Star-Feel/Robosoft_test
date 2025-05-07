@@ -204,12 +204,14 @@ class RodObjectsMixin:
             pickle.dump(callback_data, f)
 
     def visualize_2d(
-            self,
-            video_name="video.mp4",
-            fps=15,
-            xlim=(0, 4),
-            ylim=(-1, 1),
-            skip=1,
+        self,
+        video_name="video.mp4",
+        fps=15,
+        xlim=None,
+        ylim=None,
+        skip=1,
+        equal_aspect=False,
+        target_last=False,
     ):
 
         positions_over_time = np.array(self.rod_callback["position"])
@@ -218,6 +220,27 @@ class RodObjectsMixin:
             np.array(params["position"][::skip])
             for params in self.object_callbacks
         ]
+
+        all_positions = np.concatenate([
+            positions_over_time.transpose(0, 2, 1).reshape(-1, 3),
+            *[pos.reshape(-1, 3) for pos in object_positions]
+        ],
+                                       axis=0)
+        # Automatically set xlim and ylim if not provided
+        if xlim is None:
+            x_min = np.min(all_positions[:, 2])
+            x_max = np.max(all_positions[:, 2])
+            xlim = (x_min, x_max)
+
+        if ylim is None:
+            y_min = np.min(all_positions[:, 0])
+            y_max = np.max(all_positions[:, 0])
+            ylim = (y_min, y_max)
+
+        if equal_aspect:
+            max_range = max(xlim[1] - xlim[0], ylim[1] - ylim[0])
+            xlim = (xlim[0], xlim[0] + max_range)
+            ylim = (ylim[0], ylim[0] + max_range)
 
         print("plot video")
         FFMpegWriter = animation.writers["ffmpeg"]
@@ -253,10 +276,12 @@ class RodObjectsMixin:
                         center_x = object_positions[idx][time][2]
                         center_y = object_positions[idx][time][0]
                         radius = obj.radius[0]
+                        color = 'red' if target_last and idx == len(
+                            self.objects) - 1 else 'lightblue'
                         object_plots[idx] = plt.Circle((center_x, center_y),
                                                        radius,
                                                        edgecolor='b',
-                                                       facecolor='lightblue')
+                                                       facecolor=color)
                         ax.add_patch(object_plots[idx])
 
                 # 捕捉当前帧
