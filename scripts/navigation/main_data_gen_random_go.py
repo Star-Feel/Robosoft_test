@@ -87,7 +87,7 @@ def main():
             last = np.random.choice(action_list)
             actions[int(time)] = last
         env = NavigationSnakeEnvironment(configs)
-        env.setup()
+        env.setup(1)
         run_simulation(env, actions)
 
         export_state_action(env, local_output_dir)
@@ -95,7 +95,7 @@ def main():
             env_config = yaml.safe_load(f)
         export_config(env_config, local_output_dir)
 
-        env.visualize_2d(osp.join(local_output_dir, "2d.mp4"))
+        env.visualize_2d(osp.join(local_output_dir, "2d.mp4"), skip=10000)
         plot_contour(positions=np.array(
             env.rod_callback["position"]).transpose(0, 2, 1)[..., [0, 2]],
                      save_path=osp.join(local_output_dir, "contour.png"))
