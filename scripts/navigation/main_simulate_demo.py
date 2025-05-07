@@ -1,29 +1,21 @@
-import os
 import sys
 import numpy as np
 import os.path as osp
 import pickle
-import json
 
 sys.path.append("/data/zyw/workshop/attempt")
-
-import yaml
 
 from ssim.utils import load_json
 
 sys.path.append("/data/zyw/workshop/attempt")
 from tqdm import tqdm
-from ssim.components import ChangeableMuscleTorques
 from ssim.envs import NavigationSnakeTorqueEnvironment, NavigationSnakeArguments
-from ssim.visualize.visualizer import plot_contour
-
-N = 100
 
 
 def main():
-    source_dir = "/data/zyw/workshop/attempt/work_dirs/navigation_data/full/0/info.json"
+    data_path = "/data/zyw/workshop/attempt/work_dirs/navigation_data/full/0/info.json"
     work_dir = "/data/zyw/workshop/attempt/work_dirs/navigation_demo"
-    info = load_json(source_dir)
+    info = load_json(data_path)
 
     config = NavigationSnakeArguments.from_yaml(info["config"])
     env = NavigationSnakeTorqueEnvironment(config)
@@ -38,7 +30,9 @@ def main():
         if env.reach():
             break
 
-    env.visualize_2d(osp.join(work_dir, "demo.mp4"), equal_aspect=True)
+    env.visualize_2d(osp.join(work_dir, "demo.mp4"),
+                     equal_aspect=True,
+                     target_last=True)
 
 
 if __name__ == "__main__":
