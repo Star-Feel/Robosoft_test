@@ -209,11 +209,14 @@ class RodObjectsMixin:
             fps=15,
             xlim=(0, 4),
             ylim=(-1, 1),
+            skip=1,
     ):
 
         positions_over_time = np.array(self.rod_callback["position"])
+        positions_over_time = positions_over_time[::skip]
         object_positions = [
-            np.array(params["position"]) for params in self.object_callbacks
+            np.array(params["position"][::skip])
+            for params in self.object_callbacks
         ]
 
         print("plot video")
@@ -235,7 +238,7 @@ class RodObjectsMixin:
         object_plots = [None for _ in range(len(self.objects))]
 
         with writer.saving(fig, video_name, dpi=150):
-            for time in tqdm(range(1, len(self.rod_callback["time"]))):
+            for time in tqdm(range(1, positions_over_time.shape[0])):
                 # 更新杆的位置
                 rod_lines_2d.set_xdata(positions_over_time[time][2])
                 rod_lines_2d.set_ydata(positions_over_time[time][0])
