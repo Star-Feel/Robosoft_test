@@ -10,6 +10,8 @@ from ..arguments import (RodArguments, SimulatorArguments, SphereArguments,
                          SuperArguments)
 from .base_envs import RodObjectsEnvironment
 
+from new_forces import ChangeableMuscleTorques
+
 
 @dataclass
 class ContinuumSnakeArguments(SuperArguments):
@@ -24,6 +26,7 @@ class ContinuumSnakeEnvironment(RodObjectsEnvironment):
     def __init__(self, configs: ContinuumSnakeArguments):
         self.rod_config = configs.rod
         self.sim_config = configs.simulator
+        self.object_configs = configs.objects
 
         super().__init__(
             final_time=self.sim_config.final_time,
@@ -51,13 +54,13 @@ class ContinuumSnakeEnvironment(RodObjectsEnvironment):
         gravitational_acc = -9.80665
         period = 1.0
 
-        # for object_config in self.object_configs:
-        #     if isinstance(object_config, SphereArguments):
-        #         self.add_sphere(
-        #             center=object_config.center,
-        #             radius=object_config.radius,
-        #             density=object_config.density,
-        #         )
+        for object_config in self.object_configs:
+            if isinstance(object_config, SphereArguments):
+                self.add_sphere(
+                    center=object_config.center,
+                    radius=object_config.radius,
+                    density=object_config.density,
+                )
 
         # Add gravitational forces
         self.simulator.add_forcing_to(self.shearable_rod).using(
@@ -67,7 +70,7 @@ class ContinuumSnakeEnvironment(RodObjectsEnvironment):
 
         wave_length = b_coeff[-1]
         self.simulator.add_forcing_to(self.shearable_rod).using(
-            ea.MuscleTorques,
+            ChangeableMuscleTorques,
             base_length=self.rod_config.base_length,
             b_coeff=b_coeff[:-1],
             period=period,
