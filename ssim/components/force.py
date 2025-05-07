@@ -84,7 +84,8 @@ class ChangeableMuscleTorques(MuscleTorques):
         self.phase_shift = direction * self.causal_mask * sign * np.pi / 6
 
     def apply_torques(self, rod, time):
-        self.update_phase_shift(time, self.turn[0])
+        if self.turn is not None:
+            self.update_phase_shift(time, self.turn[0])
 
         time, torque = self.compute_muscle_torques(
             time,
