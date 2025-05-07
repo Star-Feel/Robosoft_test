@@ -483,3 +483,50 @@ def plot_contour(
 
     if save_path:
         plt.savefig(save_path, dpi=300)
+
+
+def plot_contour_with_spheres(
+    positions: np.ndarray,
+    spheres: list,
+    xlim=None,
+    ylim=None,
+    save_path=None,
+):
+    """
+    Plot a 2D line plot based on positions and overlay spheres.
+
+    Args:
+        positions: 2D coordinates of shape (time_steps, n_points, 2).
+        spheres: Array of spheres, each defined as (x, y, z, r).
+        xlim: Tuple specifying x-axis limits (optional).
+        ylim: Tuple specifying y-axis limits (optional).
+    """
+    # Extract x and z coordinates
+    x = positions[:, :, 0]
+    z = positions[:, :, 1]
+
+    # Plot the positions as a simple line plot
+    plt.figure(figsize=(8, 6))
+    for i in range(x.shape[1]):
+        plt.plot(z[:, i], x[:, i], label=f"Point {i + 1}")
+    plt.xlabel("Z")
+    plt.ylabel("X")
+    plt.title("2D Trajectory Plot")
+
+    # Overlay spheres
+    for sphere in spheres:
+        center_x, _, center_z, radius = sphere
+        circle = plt.Circle((center_z, center_x), radius, color='b', alpha=0.3)
+        plt.gca().add_patch(circle)
+
+    # Set axis limits if provided
+    if xlim:
+        plt.xlim(xlim)
+    if ylim:
+        plt.ylim(ylim)
+
+    if save_path:
+        plt.savefig(save_path, dpi=300)
+        plt.close()
+    else:
+        plt.show()
