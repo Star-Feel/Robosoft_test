@@ -60,6 +60,12 @@ def export_state_action(env: NavigationSnakeEnvironment, output_dir: str):
         pickle.dump(state_action, f)
 
 
+def export_config(config, output_dir: str):
+
+    with open(osp.join(output_dir, "config.yaml"), "w") as f:
+        yaml.dump(config, f, default_flow_style=False)
+
+
 def main():
     output_dir = "./work_dirs/navigation_data/random_go"
     os.makedirs(output_dir, exist_ok=True)
@@ -83,8 +89,13 @@ def main():
         env = NavigationSnakeEnvironment(configs)
         env.setup()
         run_simulation(env, actions)
-        env.visualize_2d(osp.join(local_output_dir, "2d.mp4"))
+
         export_state_action(env, local_output_dir)
+        with open(config_path, "r") as f:
+            env_config = yaml.safe_load(f)
+        export_config(env_config, local_output_dir)
+
+        env.visualize_2d(osp.join(local_output_dir, "2d.mp4"))
         plot_contour(positions=np.array(
             env.rod_callback["position"]).transpose(0, 2, 1)[..., [0, 2]],
                      save_path=osp.join(local_output_dir, "contour.png"))
