@@ -172,7 +172,7 @@ class NavigationSnakeTorqueEnvironment(RodObjectsEnvironment):
             rendering_fps=self.sim_config.rendering_fps,
         )
 
-        self.torque = []
+        self.torque = np.zeros((3, self.rod_config.n_elem))
 
     def setup(self, callback_step_skip: int = -1):
         shear_modulus = self.rod_config.youngs_modulus / (
@@ -282,11 +282,14 @@ class NavigationSnakeTorqueEnvironment(RodObjectsEnvironment):
             "ok"
         }
 
-    def set_target(self, target: list[float]):
-        self.target = np.array(target)
+    def set_target(self, target_id: int):
+        self.target = self.object_configs[target_id].center
+        self.eps = self.object_configs[target_id].radius
 
-    def reach(self, eps=0.01):
+    def reach(self, eps=None):
+        eps = eps if eps is not None else self.eps
         rod_tip_position = self.shearable_rod.position_collection[...,
                                                                   -1].copy()
-        distance = np.linalg.norm(rod_tip_position - self.target)
+        distance = np.linalg.norm(rod_tip_position[[0, 2]] -
+                                  self.target[[0, 2]])
         return distance < eps
