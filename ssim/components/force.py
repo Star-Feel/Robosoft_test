@@ -38,12 +38,16 @@ class ChangeableMuscleTorques(MuscleTorques):
 
     def __init__(self,
                  *args,
-                 turn: list[int],
+                 turn: Optional[list[int]] = None,
+                 torque: Optional[np.ndarray] = None,
                  callbacks: Optional[list] = None,
                  **kwargs):
         super().__init__(*args, **kwargs)
+        assert turn is not None or torque is not None, \
+            "Either turn or torque must be provided."
         self.amplitude = 1.0
         self.turn = turn
+        self.torque = torque
         self.callbacks = callbacks
         self.turn_start_time = None
         self.causal_mask = np.ones_like(self.my_spline)
@@ -94,6 +98,7 @@ class ChangeableMuscleTorques(MuscleTorques):
             rod.director_collection,
             rod.external_torques,
             self.amplitude,
+            self.torque,
         )
         if self.callbacks is not None:
             self.callbacks.append((time, torque))
@@ -112,19 +117,21 @@ class ChangeableMuscleTorques(MuscleTorques):
         director_collection,
         external_torques,
         amplitude,
+        torque=None,
     ):
-        # Ramp up the muscle torque
-        factor = min(1.0, time / ramp_up_time)
-        # From the node 1 to node nelem-1
-        # Magnitude of the torque. Am = beta(s) * sin(2pi*t/T + 2pi*s/lambda + phi)
-        # There is an inconsistency with paper and Elastica cpp implementation. In paper sign in
-        # front of wave number is positive, in Elastica cpp it is negative.
-        torque_mag = (
-            factor * my_spline * amplitude *
-            np.sin(angular_frequency * time - wave_number * s + phase_shift))
-        # Head and tail of the snake is opposite compared to elastica cpp. We need to iterate torque_mag
-        # from last to first element.
-        torque = _batch_product_i_k_to_ik(direction, torque_mag[::-1])
+        if torque is None:
+            # Ramp up the muscle torque
+            factor = min(1.0, time / ramp_up_time)
+            # From the node 1 to node nelem-1
+            # Magnitude of the torque. Am = beta(s) * sin(2pi*t/T + 2pi*s/lambda + phi)
+            # There is an inconsistency with paper and Elastica cpp implementation. In paper sign in
+            # front of wave number is positive, in Elastica cpp it is negative.
+            torque_mag = (factor * my_spline * amplitude *
+                          np.sin(angular_frequency * time - wave_number * s +
+                                 phase_shift))
+            # Head and tail of the snake is opposite compared to elastica cpp. We need to iterate torque_mag
+            # from last to first element.
+            torque = _batch_product_i_k_to_ik(direction, torque_mag[::-1])
 
         inplace_addition(
             external_torques[..., 1:],

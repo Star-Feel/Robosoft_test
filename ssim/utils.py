@@ -39,9 +39,9 @@ def save_yaml(data, file_path: str):
         yaml.dump(data, f, default_flow_style=False)
 
 
-def save_json(data, file_path: str):
+def save_json(data, file_path: str, **kwargs):
     with open(file_path, "w") as f:
-        json.dump(data, f, indent=4)
+        json.dump(data, f, **kwargs)
 
 
 def load_json(file_path: str):
