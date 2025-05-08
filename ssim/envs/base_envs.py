@@ -76,6 +76,7 @@ class RodObjectsMixin:
 
         self.objects = []
         self.action_flags = []
+        self.attach_flags = []
         self.attachable_flags = []
         self.object2id = {}
         self.object_callbacks = []
@@ -127,6 +128,7 @@ class RodObjectsMixin:
         self.objects.append(sphere)
         self.object2id[sphere] = len(self.objects) - 1
         self.action_flags.append(False)
+        self.attach_flags.append(False)
         self.attachable_flags.append(False)
         self.object_callbacks.append(ea.defaultdict(list))
 
@@ -158,6 +160,7 @@ class RodObjectsMixin:
         self.objects.append(mesh)
         self.object2id[mesh] = len(self.objects) - 1
         self.action_flags.append(False)
+        self.attach_flags.append(False)
         self.attachable_flags.append(False)
         self.object_callbacks.append(ea.defaultdict(list))
 
