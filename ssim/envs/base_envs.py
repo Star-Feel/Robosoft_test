@@ -12,6 +12,7 @@ from elastica.timestepper import extend_stepper_interface
 from matplotlib import animation
 from tqdm import tqdm
 
+from ..arguments import SphereArguments, MeshSurfaceArguments
 from ..components import MeshSurface, RigidBodyCallBack, RodCallBack
 from ..components.callback import MeshSurfaceCallBack
 from ..visualize.visualizer import rod_objects_3d_visualize
@@ -362,3 +363,22 @@ class RodObjectsEnvironment(SimulateMixin, RodObjectsMixin, ABC):
     @abstractmethod
     def setup(self):
         pass
+
+    def add_objects(self, object_configs: list):
+        for object_config in object_configs:
+            if isinstance(object_config, SphereArguments):
+                self.add_sphere(
+                    center=object_config.center,
+                    radius=object_config.radius,
+                    density=object_config.density,
+                )
+            elif isinstance(object_config, MeshSurfaceArguments):
+                self.add_mesh_surface(
+                    mesh_path=object_config.mesh_path,
+                    center=object_config.center,
+                    scale=object_config.scale,
+                    rotate=object_config.rotate,
+                )
+            else:
+                raise ValueError(
+                    f"Unsupported object type: {type(object_config)}")
