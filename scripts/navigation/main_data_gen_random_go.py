@@ -99,7 +99,11 @@ def main():
             env_config = yaml.safe_load(f)
         export_config(env_config, local_output_dir)
 
-        env.visualize_2d(osp.join(local_output_dir, "2d.mp4"), skip=1000)
+        env.visualize_2d(
+            osp.join(local_output_dir, "2d.mp4"),
+            skip=1000,
+            equal_aspect=True,
+        )
         plot_contour(positions=np.array(
             env.rod_callback["position"]).transpose(0, 2, 1)[..., [0, 2]],
                      save_path=osp.join(local_output_dir, "contour.png"))

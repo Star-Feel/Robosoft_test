@@ -59,7 +59,7 @@ class NavigationSnakeActionEnvironment(RodObjectsEnvironment):
         )
         b_coeff = np.array([17.4, 48.5, 5.4, 14.7, 0.97])
         gravitational_acc = -9.80665
-        period = 1.0
+        period = 0.5
 
         for object_config in self.object_configs:
             if isinstance(object_config, SphereArguments):
@@ -98,7 +98,7 @@ class NavigationSnakeActionEnvironment(RodObjectsEnvironment):
         froude = 0.1
         mu = self.rod_config.base_length / (period * period *
                                             np.abs(gravitational_acc) * froude)
-        kinetic_mu_array = np.array([mu, 1.5 * mu, 2.0 * mu
+        kinetic_mu_array = np.array([mu, 8 * mu, 20.0 * mu
                                      ])  # [forward, backward, sideways]
         static_mu_array = 2 * kinetic_mu_array
         self.simulator.add_forcing_to(self.shearable_rod).using(

@@ -45,7 +45,7 @@ class ChangeableMuscleTorques(MuscleTorques):
         super().__init__(*args, **kwargs)
         assert turn is not None or torque is not None, \
             "Either turn or torque must be provided."
-        self.amplitude = 1.0
+        self.amplitude = 2.0
         self.turn = turn
         self.torque = torque
         self.callbacks = callbacks
