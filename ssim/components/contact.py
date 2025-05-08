@@ -375,14 +375,20 @@ class JoinableRodSphereContact(RodSphereContact):
 
     def __init__(
         self,
+
+class JoinableRodSphereContact(RodSphereContact):
+
+    def __init__(self,
         k: float,
         nu: float,
         velocity_damping_coefficient=0.0,
         friction_coefficient=0.0,
         index: int = -1,
-        flag: list[bool] = [False],
+                 action_flags: list[bool] = [False],
+                 attach_flags: list[bool] = [False],
         flag_id: int = 0,
-    ):
+                 collision: bool = True,
+                 eps: float = 1e-3):
         """
         Parameters
         ----------
@@ -404,9 +410,12 @@ class JoinableRodSphereContact(RodSphereContact):
         )
 
         self.index = index
-        self.flag = flag
+        self.action_flags = action_flags
+        self.attach_flags = attach_flags
         self.flag_id = flag_id
         self.relative_position = None
+        self.collision = collision
+        self.eps = eps
 
     def _check_systems_validity(
         self,
@@ -414,6 +423,35 @@ class JoinableRodSphereContact(RodSphereContact):
         system_two,
     ) -> None:
         pass
+
+    def _attach_check(
+        self,
+        system_one: RodType,
+        system_two: AllowedContactType,
+    ) -> bool:
+        """
+        Check if the rod is attached to the sphere.
+
+        Parameters
+        ----------
+        system_one: object
+            Rod object.
+        system_two: object
+            Sphere object.
+
+        Returns
+        -------
+        bool
+            True if the rod is attached to the sphere, False otherwise.
+        """
+        radias = system_two.radius
+        center = system_two.position_collection
+        rod_pos = system_one.position_collection
+        if np.linalg.norm(rod_pos[..., -1] -
+                          center[..., 0]) <= radias * (1 + self.eps):
+            self.attach_flags[self.flag_id] = True
+        else:
+            self.attach_flags[self.flag_id] = False
 
     def apply_contact(self, system_one: RodType,
                       system_two: AllowedContactType) -> None:
@@ -428,8 +466,10 @@ class JoinableRodSphereContact(RodSphereContact):
             Sphere object.
 
         """
-        if not self.flag[self.flag_id]:
+        self._attach_check(system_one, system_two)
+        if not self.action_flags[self.flag_id]:
             self.relative_position = None
+            if self.collision:
             super().apply_contact(system_one, system_two)
         else:
             if self.relative_position is None:
