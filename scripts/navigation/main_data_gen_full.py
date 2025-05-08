@@ -3,7 +3,6 @@ import os
 import sys
 import numpy as np
 import os.path as osp
-import pickle
 
 sys.path.append("/data/zyw/workshop/attempt")
 from tqdm import tqdm
@@ -25,6 +24,34 @@ info_temp = {
     "target_id": 3,
     "description": "Navigation to the green sphere",
 }
+desciprtions = [
+    "You need to go through the obstacles to find the <object>.",
+    "Navigation to the <object>.",
+    "Please locate and reach the target: <object>, and pay attention to obstacles along the way.",
+    "Navigate to: <object>, ensuring you avoid all obstacles to arrive safely.",
+    "Your task is to traverse obstacles and successfully locate: <object>.",
+    "Explore the environment and find: <object>, remember to carefully cross any potential obstacles.",
+    "Please guide to: <object>, stay alert during the journey and proceed safely.",
+]
+colors = [
+    "Red", "Blue", "Green", "Yellow", "Purple", "Orange", "Pink", "Brown",
+    "Cyan", "Magenta", "Lime", "Teal", "Indigo", "Violet", "Turquoise",
+    "Coral", "Gold", "Silver", "Black", "White"
+]
+shapes = [
+    "Sphere", "Cylinder", "Cube", "Cone", "Pyramid", "Prism", "Torus",
+    "Ellipsoid", "Rectangular Prism", "Hexagonal Prism", "Octahedron",
+    "Dodecahedron", "Icosahedron", "Tetrahedron", "Parallelepiped",
+    "Hemisphere", "Cap", "Frustum", "Disk", "Wedge"
+]
+
+
+def get_description():
+    color = np.random.choice(colors).lower()
+    shape = np.random.choice(shapes).lower()
+    description = np.random.choice(desciprtions)
+    description = description.replace("<object>", f"{color} {shape}")
+    return description, color, shape
 
 
 def main():
@@ -34,6 +61,7 @@ def main():
         local_target_dir = osp.join(TARGET_DIR, f"{i}")
         os.makedirs(local_target_dir, exist_ok=True)
 
+        desciprtion, color, shape = get_description()
         config = load_yaml(osp.join(local_target_object_dir, "config.yaml"))
         spheres = config["objects"]
         for sphere in spheres:
@@ -42,6 +70,8 @@ def main():
             if "position" in sphere:
                 sphere["center"] = sphere.pop("position")
         target_id = len(spheres) - 1
+        spheres[-1]["color"] = color
+        spheres[-1]["shape"] = shape
         save_yaml(config, osp.join(local_target_dir, "config.yaml"))
 
         info = copy.deepcopy(info_temp)
@@ -49,6 +79,7 @@ def main():
         info["config"] = osp.join(local_target_dir, "config.yaml")
         info["state_action"] = osp.join(local_random_dir, "state_action.pkl")
         info["target_id"] = target_id
+        info["description"] = desciprtion
 
         save_json(
             info,
