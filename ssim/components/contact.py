@@ -2,6 +2,7 @@ __all__ = [
     "JoinableRodSphereContact",
     "RodMeshSurfaceContactWithGridMethod",
 ]
+from typing import Union
 import elastica
 from elastica import NoContact, RodSphereContact, RodType, AllowedContactType, SystemType
 from elastica.interaction import node_to_element_position
@@ -355,7 +356,7 @@ class RodMeshSurfaceContactWithGridMethod(NoContact):
             system_one.position_collection,
         )
 
-        return  _calculate_contact_forces_rod_mesh_surface(
+        return _calculate_contact_forces_rod_mesh_surface(
             self.mesh_surface_face_normals,
             self.mesh_surface_face_centers,
             self.element_position,
@@ -371,22 +372,45 @@ class RodMeshSurfaceContactWithGridMethod(NoContact):
         )
 
 
-class JoinableRodSphereContact(RodSphereContact):
+class RodMeshSurfaceContactWithGridMethodWithContactFlag(
+        RodMeshSurfaceContactWithGridMethod):
 
     def __init__(
         self,
+        k: float,
+        nu: float,
+        faces_grid: dict,
+        grid_size: float,
+        surface_tol=1e-4,
+        contact_flag: list[bool] = [False],
+        contact_flag_id: int = 0,
+    ):
+        super().__init__(
+            k,
+            nu,
+            faces_grid,
+            grid_size,
+            surface_tol=surface_tol,
+        )
+        self.contact_flag = contact_flag
+        self.contact_flag_id = contact_flag_id
+
+    def apply_contact(self, system_one: RodType,
+                      system_two: AllowedContactType) -> tuple:
+        pass
+
 
 class JoinableRodSphereContact(RodSphereContact):
 
     def __init__(self,
-        k: float,
-        nu: float,
-        velocity_damping_coefficient=0.0,
-        friction_coefficient=0.0,
-        index: int = -1,
+                 k: float,
+                 nu: float,
+                 velocity_damping_coefficient=0.0,
+                 friction_coefficient=0.0,
+                 index: Union[int, np.ndarray] = -1,
                  action_flags: list[bool] = [False],
                  attach_flags: list[bool] = [False],
-        flag_id: int = 0,
+                 flag_id: int = 0,
                  collision: bool = True,
                  eps: float = 1e-3):
         """
@@ -409,7 +433,7 @@ class JoinableRodSphereContact(RodSphereContact):
             friction_coefficient,
         )
 
-        self.index = index
+        self.index = np.array([index]) if isinstance(index, int) else index
         self.action_flags = action_flags
         self.attach_flags = attach_flags
         self.flag_id = flag_id
@@ -447,8 +471,9 @@ class JoinableRodSphereContact(RodSphereContact):
         radias = system_two.radius
         center = system_two.position_collection
         rod_pos = system_one.position_collection
-        if np.linalg.norm(rod_pos[..., -1] -
-                          center[..., 0]) <= radias * (1 + self.eps):
+        if np.any(
+                np.linalg.norm(rod_pos[..., self.index] - center[..., [0]],
+                               axis=0) <= radias * (1 + self.eps)):
             self.attach_flags[self.flag_id] = True
         else:
             self.attach_flags[self.flag_id] = False
@@ -470,7 +495,7 @@ class JoinableRodSphereContact(RodSphereContact):
         if not self.action_flags[self.flag_id]:
             self.relative_position = None
             if self.collision:
-            super().apply_contact(system_one, system_two)
+                super().apply_contact(system_one, system_two)
         else:
             if self.relative_position is None:
                 self.relative_position = \
