@@ -34,8 +34,8 @@ class BlenderRenderer:
         env_light = bpy.context.object
         env_light.name = "EnvironmentLight"
         env_light.data.energy = 1.0  
-        env_light.data.color = (0.5, 0.5, 0.5)  # 灰色光
-
+        env_light.data.color = (0.7, 0.7, 0.7)  # 灰色光
+        
         # scene settings
         scene = bpy.context.scene
         scene.render.engine = 'BLENDER_EEVEE_NEXT'                     # 使用 Eevee 引擎
@@ -47,7 +47,7 @@ class BlenderRenderer:
         scene.view_settings.view_transform = 'Filmic'             # 窗口显示时，使用Filmic颜色变换
         scene.sequencer_colorspace_settings.name = 'Filmic sRGB'  # 保存图片时使用 Filmmic + sRGB
         scene.render.film_transparent = False                     # 背景不透明（纯色或者环境光贴图）
-        scene.render.resolution_percentage = 50
+        scene.render.resolution_percentage = 25
         scene.eevee.taa_render_samples = 8
         scene.eevee.taa_samples = 0
         scene.eevee.gi_diffuse_bounces = 0
@@ -55,11 +55,84 @@ class BlenderRenderer:
     @staticmethod
     def coord_pov2blend(x, y, z):
         x_prime = -z 
-        y_prime = y
-        z_prime = x
+        y_prime = x
+        z_prime = y
         return x_prime, y_prime, z_prime
 
-    def load_pov_settings(self, pov_file, obj_path=None):
+    def create_video(self, output_dir, output_filename, fps=30):
+        pass
+
+    def batch_rendering(self, pov_dir, output_dir):
+        """批量渲染指定目录中的所有 POV 文件。
+        
+        Args:
+            pov_dir (str): 包含 POV 文件的目录路径
+            output_dir (str): 渲染输出的目录路径
+        """
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # 获取所有 POV 文件并按帧号排序
+        pov_files = [f for f in os.listdir(pov_dir) if f.endswith('.pov')]
+        # 从文件名中提取帧号并排序
+        frame_pattern = re.compile(r'frame_(\d+)\.pov')
+        pov_files.sort(key=lambda f: int(frame_pattern.search(f).group(1)) if frame_pattern.search(f) else 0)
+        
+        if not pov_files:
+            print(f"警告: 在 {pov_dir} 中未找到 POV 文件")
+            return
+        
+        print(f"找到 {len(pov_files)} 个 POV 文件进行批量渲染")
+        
+        # 加载第一个文件来设置相机、光源和静态对象
+        first_pov = os.path.join(pov_dir, pov_files[0])
+        self.load_pov_settings(first_pov)
+        
+        # 处理每个 POV 文件
+        total_start_time = time.time()
+        for i, pov_file in enumerate(pov_files):
+            pov_path = os.path.join(pov_dir, pov_file)
+            frame_match = frame_pattern.search(pov_file)
+            frame_num = int(frame_match.group(1)) if frame_match else i
+            
+            print(f"正在渲染 {pov_file} ({i+1}/{len(pov_files)})")
+            
+            # 只更新蛇的部分，保留相机和其他静态物体
+            self.update_snake_only(pov_path)
+            
+            # 渲染当前帧
+            frame_start_time = time.time()
+            bpy.context.scene.frame_set(frame_num)
+            bpy.ops.render.render()
+            
+            # 保存渲染结果
+            output_file = os.path.join(output_dir, f"frame_{frame_num:06d}.png")
+            bpy.data.images["Render Result"].save_render(output_file)
+            
+            frame_render_time = time.time() - frame_start_time
+            print(f"帧 {frame_num} 渲染完成，用时: {frame_render_time:.2f}秒")
+        
+        total_time = time.time() - total_start_time
+        print(f"批量渲染完成，总用时: {total_time:.2f}秒，平均每帧: {total_time/len(pov_files):.2f}秒")
+
+    def update_snake_only(self, pov_file):
+        """只更新蛇的部分，保留其他场景元素不变。
+        
+        Args:
+            pov_file (str): POV 文件路径
+        """
+        # 读取新的 POV 文件内容
+        with open(pov_file, 'r') as file:
+            self.pov_content = file.read()
+        
+        # 删除所有现有的蛇对象
+        for obj in bpy.data.objects:
+            if obj.name.startswith('SphereSweep_'):
+                bpy.data.objects.remove(obj, do_unlink=True)
+        
+        # 重新创建蛇
+        self.set_snake()
+
+    def load_pov_settings(self, pov_file, obj_path="/data/wjs/wrp/SoftRoboticaSimulator/assets/basketball/BasketBall.obj"):
         self.pov_file = pov_file
         with open(pov_file, 'r') as file:
             self.pov_content = file.read()
@@ -75,15 +148,15 @@ class BlenderRenderer:
     def load_obj(self, obj_path):
         bpy.ops.wm.obj_import(filepath=obj_path)
         # 放置在球体对应位置，并设置材质
-        sphere_matche = re.findall(r'sphere\s*{([^}]*)}', self.pov_content, re.DOTALL)[0]
-        sphere_data_match = re.search(r'<([^>]*)>\s*,\s*([0-9.]+)', sphere_matche)
+        sphere_match = re.findall(r'sphere\s*{([^}]*)}', self.pov_content, re.DOTALL)[0]
+        sphere_data_match = re.search(r'<([^>]*)>\s*,\s*([0-9.]+)', sphere_match)
         if sphere_data_match:
             pos = map(float, sphere_data_match.group(1).split(','))
             pos = self.coord_pov2blend(*pos)
             obj = bpy.context.selected_objects[0]
             obj.location = tuple(pos)
             obj.rotation_euler = (math.radians(90), 0, math.radians(90))
-            obj.scale = (1, 1, 1) 
+            obj.scale = (0.1, 0.1, 0.1) 
 
     def set_camera(self):
         # 设置相机
@@ -182,14 +255,13 @@ class BlenderRenderer:
             # 提取类型和点数
             header_match = re.search(r'(linear_spline|cubic_spline|b_spline)\s*(\d+)', sweep_text)
             if header_match:
-                spline_type = header_match.group(1)
-                num_points = int(header_match.group(2))
                 
                 # 提取所有点和半径
                 points = []
                 point_matches = re.findall(r',<([^>]*)>\s*,\s*([0-9.e+-]+)', sweep_text)
                 for point_match in point_matches:
                     pos = tuple(map(float, point_match[0].split(',')))
+                    pos = self.coord_pov2blend(*pos)
                     radius = float(point_match[1])
                     points.append((pos, radius))
                 
@@ -205,7 +277,6 @@ class BlenderRenderer:
                 
                 # 设置点位置
                 for idx, (pos, radius) in enumerate(points):
-                    pos = self.coord_pov2blend(*pos)
                     polyline.bezier_points[idx].co = pos
                     polyline.bezier_points[idx].handle_left_type = 'AUTO'
                     polyline.bezier_points[idx].handle_right_type = 'AUTO'
@@ -239,13 +310,16 @@ class BlenderRenderer:
 if __name__ == "__main__":
     # POV 文件路径
     import time
-    pov_dir = "/home/wrp/SoftRoboticaSimulator/work_dirs/povray_continuum_snake/diag"
-    pov_file = "/home/wrp/SoftRoboticaSimulator/work_dirs/povray_continuum_snake/diag/frame_00000.pov"
-    obj_path = "/home/wrp/SoftRoboticaSimulator/assets/lamed_chair/Lamed_chair.obj"
+    pov_dir = "/data/wjs/wrp/SoftRoboticaSimulator/work_dirs/povray_continuum_snake/diag"
+    pov_file = "/data/wjs/wrp/SoftRoboticaSimulator/work_dirs/povray_continuum_snake/diag/frame_00000.pov"
+    # obj_path = "/data/wjs/wrp/SoftRoboticaSimulator/assets/lamed_chair/Lamed_chair.obj"
+    obj_path = "/data/wjs/wrp/SoftRoboticaSimulator/assets/basketball/BasketBall.obj"
+    out_dir = "/data/wjs/wrp/SoftRoboticaSimulator/renders"
 
     pov_settings = BlenderRenderer()
     start_time = time.time()
-    pov_settings.load_pov_settings(pov_file, obj_path)
+    # pov_settings.load_pov_settings(pov_file, obj_path)\
+    pov_settings.batch_rendering(pov_dir, out_dir)
     
     s_time = time.time()
     pov_settings.render()
