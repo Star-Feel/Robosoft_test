@@ -3,13 +3,23 @@ __all__ = [
     "NavigationSnakeTorqueEnvironment",
     "NavigationSnakeArguments",
 ]
+from dataclasses import dataclass
+from typing import Sequence
 
+import elastica as ea
+import numpy as np
+from elastica import RigidBodyBase
+from elastica._calculus import _isnan_check
+from elastica.timestepper import extend_stepper_interface
+from stl import mesh
 from dataclasses import dataclass
 
 import elastica as ea
 import numpy as np
 from elastica._calculus import _isnan_check
-
+from ..components import RodMeshSurfaceContactWithGridMethod, RigidBodyAnalyticalLinearDamper
+from ..components.contact import JoinableRodSphereContact, surface_grid
+from ..components.surface.mesh_surface import MeshSurface
 from ..arguments import (RodArguments, SimulatorArguments, SphereArguments,
                          SuperArguments)
 from .base_envs import RodObjectsEnvironment
@@ -174,7 +184,55 @@ class NavigationSnakeTorqueEnvironment(RodObjectsEnvironment):
 
         self.torque = np.zeros((3, self.rod_config.n_elem))
 
-    def setup(self, callback_step_skip: int = -1):
+    def add_rod_objects_contact(self):
+        for obj in self.objects:
+            if self.object2id[obj] == self.target_id:
+                continue
+            if isinstance(obj, ea.Sphere):
+                self.simulator.detect_contact_between(
+                    self.shearable_rod, obj).using(
+                        JoinableRodSphereContact,
+                        k=50,
+                        nu=10,
+                        velocity_damping_coefficient=1e3,
+                        friction_coefficient=10,
+                        index=np.array(range(self.rod_config.n_elem + 1)),
+                        action_flags=self.action_flags,
+                        attach_flags=self.attach_flags,
+                        flag_id=self.object2id[obj])
+            elif isinstance(obj, MeshSurface):
+                mesh_data = mesh.Mesh.from_file(obj.model_path)
+                grid_size = 0.1  # 网格大小
+                faces_grid = surface_grid(mesh_data.vectors, grid_size)
+                faces_grid["model_path"] = obj.model_path
+                faces_grid["grid_size"] = grid_size
+                faces_grid["surface_reorient"] = obj.mesh_orientation
+                k = 1e4  # 接触刚度系数
+                nu = 10  # 阻尼系数
+                surface_tol = 1e-2
+                self.simulator.detect_contact_between(
+                    self.shearable_rod,
+                    obj).using(RodMeshSurfaceContactWithGridMethod,
+                               k=k,
+                               nu=nu,
+                               faces_grid=faces_grid,
+                               grid_size=grid_size,
+                               surface_tol=surface_tol)
+
+    def add_dampen_to_objects(self, dampen_constant: float = 1):
+        for object_ in self.objects:
+            if isinstance(object_, RigidBodyBase):
+                self.simulator.dampen(object_).using(
+                    RigidBodyAnalyticalLinearDamper,
+                    damping_constant=dampen_constant,
+                    time_step=self.time_step,
+                )
+
+    def setup(self, target_id: int = -1, callback_step_skip: int = -1):
+        self.target_id = target_id
+        # if self.target_id >= 0:
+        #     self.set_target(self.target_id)
+
         shear_modulus = self.rod_config.youngs_modulus / (
             self.rod_config.poisson_ratio + 1.0)
 
@@ -191,15 +249,12 @@ class NavigationSnakeTorqueEnvironment(RodObjectsEnvironment):
         )
         b_coeff = np.array([17.4, 48.5, 5.4, 14.7, 0.97])
         gravitational_acc = -9.80665
-        period = 1.0
+        period = 0.5
 
-        for object_config in self.object_configs:
-            if isinstance(object_config, SphereArguments):
-                self.add_sphere(
-                    center=object_config.center,
-                    radius=object_config.radius,
-                    density=object_config.density,
-                )
+        self.add_objects(self.object_configs)
+
+        self.add_rod_objects_contact()
+        self.add_dampen_to_objects(1e8)
 
         # Add gravitational forces
         self.simulator.add_forcing_to(self.shearable_rod).using(
@@ -229,7 +284,7 @@ class NavigationSnakeTorqueEnvironment(RodObjectsEnvironment):
         froude = 0.1
         mu = self.rod_config.base_length / (period * period *
                                             np.abs(gravitational_acc) * froude)
-        kinetic_mu_array = np.array([mu, 1.5 * mu, 2.0 * mu
+        kinetic_mu_array = np.array([mu, 8 * mu, 20.0 * mu
                                      ])  # [forward, backward, sideways]
         static_mu_array = 2 * kinetic_mu_array
         self.simulator.add_forcing_to(self.shearable_rod).using(
