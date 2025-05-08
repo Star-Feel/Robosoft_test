@@ -409,7 +409,7 @@ class JoinableRodSphereContact(RodSphereContact):
                  friction_coefficient=0.0,
                  index: Union[int, np.ndarray] = -1,
                  action_flags: list[bool] = [False],
-                 attach_flags: list[bool] = [False],
+                 attach_flags: list[bool] = None,
                  flag_id: int = 0,
                  collision: bool = True,
                  eps: float = 1e-3):
@@ -491,7 +491,8 @@ class JoinableRodSphereContact(RodSphereContact):
             Sphere object.
 
         """
-        self._attach_check(system_one, system_two)
+        if self.attach_flags is not None:
+            self._attach_check(system_one, system_two)
         if not self.action_flags[self.flag_id]:
             self.relative_position = None
             if self.collision:
