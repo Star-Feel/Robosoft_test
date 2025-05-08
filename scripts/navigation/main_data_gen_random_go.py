@@ -79,7 +79,9 @@ def main():
         print(f"Generating data {i + 1}/{N}...")
         local_output_dir = osp.join(output_dir, f"{i}")
         os.makedirs(local_output_dir, exist_ok=True)
-        time_steps = 1e4 * generate_random_numbers(6)
+        scale = int(configs.simulator.final_time /
+                    configs.simulator.time_step / 100)
+        time_steps = scale * generate_random_numbers(6)
         actions = {}
         last = -1
         for time in time_steps:
@@ -97,7 +99,7 @@ def main():
             env_config = yaml.safe_load(f)
         export_config(env_config, local_output_dir)
 
-        env.visualize_2d(osp.join(local_output_dir, "2d.mp4"), skip=10000)
+        env.visualize_2d(osp.join(local_output_dir, "2d.mp4"), skip=1000)
         plot_contour(positions=np.array(
             env.rod_callback["position"]).transpose(0, 2, 1)[..., [0, 2]],
                      save_path=osp.join(local_output_dir, "contour.png"))
