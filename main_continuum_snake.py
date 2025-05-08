@@ -1,4 +1,5 @@
 import os
+import bpy
 
 from tqdm import tqdm
 from ssim.envs import ContinuumSnakeEnvironment, ContinuumSnakeArguments
@@ -39,9 +40,12 @@ def main():
     # env.visualize_2d(video_name="2d.mp4", fps=env.rendering_fps)
     # env.visualize_3d(video_name="3d.mp4", fps=env.rendering_fps)
     # env.export_callbacks("grab_ball_callbacks.pkl")
-    env.visualize_3d_povray(video_name=f'povray_{dir_name}',
-                            output_images_dir=f'./work_dirs/povray_{dir_name}',
-                            fps=20)
+    # env.visualize_3d_povray(video_name=f'povray_{dir_name}',
+    #                         output_images_dir=f'./work_dirs/povray_{dir_name}',
+    #                         fps=20)
+    env.visualize_3d_blender(video_name=f'povray_{dir_name}',
+                        output_images_dir=f'./work_dirs/povray_{dir_name}',
+                        fps=20)
     return success
 
 

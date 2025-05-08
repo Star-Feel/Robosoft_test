@@ -2,8 +2,8 @@ import bpy
 import re
 import os
 import math
-import subprocess
-
+import time
+import tqdm
 
 class BlenderRenderer:
     def __init__(self, output_dir="renders"):
@@ -28,13 +28,15 @@ class BlenderRenderer:
         world.use_nodes = True
         bg_node = world.node_tree.nodes.get('Background')
         if bg_node:
-            bg_node.inputs['Color'].default_value = (0.1, 0.1, 0.1, 1.0)  # RGBA
-        
-        bpy.ops.object.light_add(type='SUN', location=(0, 0, 10))
-        env_light = bpy.context.object
-        env_light.name = "EnvironmentLight"
-        env_light.data.energy = 1.0  
-        env_light.data.color = (0.7, 0.7, 0.7)  # 灰色光
+            bg_node.inputs['Color'].default_value = (0.2, 0.2, 0.2, 1.0)  # RGBA
+
+        # 创建顶部环境灯光
+        bpy.ops.object.light_add(type='AREA', location=(0, 0, 10))
+        top_light = bpy.context.object
+        top_light.name = "TopAmbientLight"
+        top_light.data.energy = 300
+        top_light.data.size = 15  # 大面积光源
+        top_light.data.color = (1.0, 1.0, 1.0)  # 纯白色
         
         # scene settings
         scene = bpy.context.scene
@@ -54,13 +56,10 @@ class BlenderRenderer:
 
     @staticmethod
     def coord_pov2blend(x, y, z):
-        x_prime = -z 
+        x_prime = z 
         y_prime = x
         z_prime = y
         return x_prime, y_prime, z_prime
-
-    def create_video(self, output_dir, output_filename, fps=30):
-        pass
 
     def batch_rendering(self, pov_dir, output_dir):
         """批量渲染指定目录中的所有 POV 文件。
@@ -89,27 +88,24 @@ class BlenderRenderer:
         
         # 处理每个 POV 文件
         total_start_time = time.time()
-        for i, pov_file in enumerate(pov_files):
+        for i, pov_file in tqdm.tqdm(enumerate(pov_files)):
             pov_path = os.path.join(pov_dir, pov_file)
             frame_match = frame_pattern.search(pov_file)
             frame_num = int(frame_match.group(1)) if frame_match else i
             
-            print(f"正在渲染 {pov_file} ({i+1}/{len(pov_files)})")
+            print(f"rendering {pov_file} ({i+1}/{len(pov_files)})")
             
             # 只更新蛇的部分，保留相机和其他静态物体
             self.update_snake_only(pov_path)
             
             # 渲染当前帧
-            frame_start_time = time.time()
             bpy.context.scene.frame_set(frame_num)
             bpy.ops.render.render()
             
             # 保存渲染结果
-            output_file = os.path.join(output_dir, f"frame_{frame_num:06d}.png")
+            output_file = os.path.join(output_dir, f"frame_{frame_num:05d}.png")
             bpy.data.images["Render Result"].save_render(output_file)
             
-            frame_render_time = time.time() - frame_start_time
-            print(f"帧 {frame_num} 渲染完成，用时: {frame_render_time:.2f}秒")
         
         total_time = time.time() - total_start_time
         print(f"批量渲染完成，总用时: {total_time:.2f}秒，平均每帧: {total_time/len(pov_files):.2f}秒")
@@ -138,7 +134,7 @@ class BlenderRenderer:
             self.pov_content = file.read()
         
         self.set_camera()
-        self.set_light()
+        # self.set_light()
         if obj_path:
             self.load_obj(obj_path)
         else:
@@ -214,6 +210,7 @@ class BlenderRenderer:
                 bpy.ops.object.light_add(type='POINT', location=(x, y, z))
                 light = bpy.context.object
                 light.name = "POVLight"
+                light.data.energy = 1000  # 设置光源强度
 
     def set_sphere(self):
         # 处理球体
@@ -322,7 +319,6 @@ if __name__ == "__main__":
     pov_settings.batch_rendering(pov_dir, out_dir)
     
     s_time = time.time()
-    pov_settings.render()
     print("render time: ", time.time() - s_time)
     
     end_time = time.time()
