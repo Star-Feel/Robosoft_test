@@ -186,8 +186,7 @@ class NavigationSnakeTorqueEnvironment(RodObjectsEnvironment):
 
     def add_rod_objects_contact(self):
         for obj in self.objects:
-            if self.object2id[obj] == self.target_id:
-                continue
+            collision = not (self.object2id[obj] == self.target_id)
             if isinstance(obj, ea.Sphere):
                 self.simulator.detect_contact_between(
                     self.shearable_rod, obj).using(
@@ -199,7 +198,8 @@ class NavigationSnakeTorqueEnvironment(RodObjectsEnvironment):
                         index=np.array(range(self.rod_config.n_elem + 1)),
                         action_flags=self.action_flags,
                         attach_flags=self.attach_flags,
-                        flag_id=self.object2id[obj])
+                        flag_id=self.object2id[obj],
+                        collision=collision)
             elif isinstance(obj, MeshSurface):
                 mesh_data = mesh.Mesh.from_file(obj.model_path)
                 grid_size = 0.1  # 网格大小
