@@ -4,6 +4,7 @@ import os
 import math
 import time
 import tqdm
+import mathutils
 
 class BlenderRenderer:
     def __init__(self, output_dir="renders"):
@@ -149,10 +150,32 @@ class BlenderRenderer:
         if sphere_data_match:
             pos = map(float, sphere_data_match.group(1).split(','))
             pos = self.coord_pov2blend(*pos)
+            radius = float(sphere_data_match.group(2))
+
             obj = bpy.context.selected_objects[0]
             obj.location = tuple(pos)
             obj.rotation_euler = (math.radians(90), 0, math.radians(90))
-            obj.scale = (0.1, 0.1, 0.1) 
+            # 如何将物体限制在球体内？
+
+            # 计算物体边界盒的对角线长度（作为"直径"）
+            local_bbox_corners = [mathutils.Vector(corner) for corner in obj.bound_box]
+            max_dimension = max(
+                (local_bbox_corners[0] - local_bbox_corners[6]).length,
+                (local_bbox_corners[1] - local_bbox_corners[7]).length,
+                (local_bbox_corners[2] - local_bbox_corners[4]).length
+            )
+            
+            # 计算需要的缩放系数来使物体恰好适合球体
+            # 使用直径的一半（半径）与球体半径比较
+            scale_factor = (radius * 2) / max_dimension
+            
+            # 应用缩放（略微减小以确保不会超出）
+            # 0.95是安全系数，可以根据需要调整
+            safe_scale = scale_factor * 0.95
+            obj.scale = (safe_scale, safe_scale, safe_scale)
+            
+            # 将物体位置设回球体中心
+            obj.location = tuple(pos) 
 
     def set_camera(self):
         # 设置相机
