@@ -21,6 +21,8 @@ class POVRayRenderer:
             "ssim/visualize/povray/includes/default.inc",
             "ssim/visualize/povray/includes/meshes.inc"
         ],
+        top_camera_position=[0, 10, 2],
+        top_camera_look_at=[0, 0, 2],
     ):
         self._ouput_filename = output_filename
         self._output_images_dir = output_images_dir
@@ -39,9 +41,9 @@ class POVRayRenderer:
         self._current_frame = 0
         self._batch = []
 
-        self.reset_stage()
+        self.reset_stage(top_camera_position, top_camera_look_at)
 
-    def reset_stage(self):
+    def reset_stage(self, top_camera_position, top_camera_look_at):
         stages = Stages()
         stages.add_camera(
             # Add first-person viewpoint
@@ -52,9 +54,9 @@ class POVRayRenderer:
         )
         stages.add_camera(
             # Add top viewpoint
-            location=[0, 10, 2],
+            location=top_camera_position,
             angle=30,
-            look_at=[0.0, 0, 2],
+            look_at=top_camera_look_at,
             sky=[-1, 0, 0],
             name="top",
         )
@@ -180,5 +182,5 @@ class POVRayRenderer:
             filename = self._ouput_filename + "_" + view_name + ".mp4"
 
             os.system(
-                f"ffmpeg -r {self._fps} -i {imageset_path}/frame_%05d.png videos/{filename}"
+                f"ffmpeg -r {self._fps} -i {imageset_path}/frame_%05d.png {filename}"
             )

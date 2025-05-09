@@ -315,16 +315,31 @@ class RodObjectsMixin:
         width=1920,
         height=1080,
     ):
+        xz_positions = [
+            np.array(callback["position"])[:, [0, 2], 0]
+            for callback in self.object_callbacks
+        ]
+        xz_positions = np.concatenate(xz_positions, axis=0)
+        x_min, z_min = np.min(xz_positions, axis=0)
+        x_max, z_max = np.max(xz_positions, axis=0)
+        x_mid, z_mid = (x_min + x_max) / 2, (z_min + z_max) / 2
+
         renderer = POVRayRenderer(
             output_filename=video_name,
             output_images_dir=output_images_dir,
             fps=fps,
             width=width,
             height=height,
+            top_camera_position=[x_mid, 20, z_mid],
+            top_camera_look_at=[x_mid, 0, z_mid],
         )
+
         frames = len(self.rod_callback['time'])
         for i in tqdm(range(frames), disable=False, desc="Rendering .povray"):
-            renderer.reset_stage()
+            renderer.reset_stage(
+                top_camera_position=[x_mid, 10, z_mid],
+                top_camera_look_at=[x_mid, 0, z_mid],
+            )
             for object_ in self.objects:
                 id_ = self.object2id[object_]
                 object_callback = self.object_callbacks[id_]
