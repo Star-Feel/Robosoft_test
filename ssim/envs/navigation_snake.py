@@ -4,27 +4,21 @@ __all__ = [
     "NavigationSnakeArguments",
 ]
 from dataclasses import dataclass
-from typing import Sequence
 
 import elastica as ea
 import numpy as np
 from elastica import RigidBodyBase
 from elastica._calculus import _isnan_check
-from elastica.timestepper import extend_stepper_interface
 from stl import mesh
-from dataclasses import dataclass
 
-import elastica as ea
-import numpy as np
-from elastica._calculus import _isnan_check
-from ..components import RodMeshSurfaceContactWithGridMethod, RigidBodyAnalyticalLinearDamper
-from ..components.contact import JoinableRodSphereContact, surface_grid
-from ..components.surface.mesh_surface import MeshSurface
 from ..arguments import (RodArguments, SimulatorArguments, SphereArguments,
                          SuperArguments)
-from .base_envs import RodObjectsEnvironment
-
-from ..components import ChangeableMuscleTorques
+from ..components import (ChangeableMuscleTorques,
+                          RigidBodyAnalyticalLinearDamper,
+                          RodMeshSurfaceContactWithGridMethod)
+from ..components.contact import JoinableRodSphereContact, surface_grid
+from ..components.surface.mesh_surface import MeshSurface
+from .base_envs import FetchableRodObjectsEnvironment
 
 
 @dataclass
@@ -35,7 +29,7 @@ class NavigationSnakeArguments(SuperArguments):
     simulator: SimulatorArguments
 
 
-class NavigationSnakeActionEnvironment(RodObjectsEnvironment):
+class NavigationSnakeActionEnvironment(FetchableRodObjectsEnvironment):
 
     def __init__(self, configs: NavigationSnakeArguments):
         self.rod_config = configs.rod
@@ -168,7 +162,7 @@ class NavigationSnakeActionEnvironment(RodObjectsEnvironment):
         return distance < eps
 
 
-class NavigationSnakeTorqueEnvironment(RodObjectsEnvironment):
+class NavigationSnakeTorqueEnvironment(FetchableRodObjectsEnvironment):
 
     def __init__(self, configs: NavigationSnakeArguments):
         self.rod_config = configs.rod

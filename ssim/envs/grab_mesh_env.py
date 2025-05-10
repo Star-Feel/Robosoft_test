@@ -10,7 +10,6 @@ import elastica as ea
 import numpy as np
 from elastica import RigidBodyBase
 from elastica._calculus import _isnan_check
-from elastica.timestepper import extend_stepper_interface
 from stl import mesh
 
 from ..arguments import (MeshSurfaceArguments, RodArguments,
@@ -20,7 +19,7 @@ from ..components import (ChangeableUniformForce,
                           RodMeshSurfaceContactWithGridMethod)
 from ..components.contact import JoinableRodSphereContact, surface_grid
 from ..components.surface.mesh_surface import MeshSurface
-from .base_envs import RodObjectsEnvironment
+from .base_envs import FetchableRodObjectsEnvironment
 
 
 @dataclass
@@ -31,7 +30,7 @@ class MeshDemoArguments(SuperArguments):
     simulator: SimulatorArguments = None
 
 
-class MeshDemoEnvironment(RodObjectsEnvironment):
+class MeshDemoEnvironment(FetchableRodObjectsEnvironment):
 
     def __init__(self, configs: MeshDemoArguments):
 

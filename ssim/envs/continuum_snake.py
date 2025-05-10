@@ -8,7 +8,7 @@ from elastica._calculus import _isnan_check
 
 from ..arguments import (RodArguments, SimulatorArguments, SphereArguments,
                          SuperArguments)
-from .base_envs import RodObjectsEnvironment
+from .base_envs import FetchableRodObjectsEnvironment
 
 from new_forces import ChangeableMuscleTorques
 
@@ -21,7 +21,7 @@ class ContinuumSnakeArguments(SuperArguments):
     simulator: SimulatorArguments
 
 
-class ContinuumSnakeEnvironment(RodObjectsEnvironment):
+class ContinuumSnakeEnvironment(FetchableRodObjectsEnvironment):
 
     def __init__(self, configs: ContinuumSnakeArguments):
         self.rod_config = configs.rod

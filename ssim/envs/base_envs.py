@@ -1,4 +1,11 @@
-__all__ = ["RodObjectsEnvironment"]
+__all__ = [
+    "SimulateMixin",
+    "RodMixin",
+    "RigidMixin",
+    "ObjectsMixin",
+    "FetchableRodObjectsEnvironment",
+    "SimulatedEnvironment",
+]
 
 import pickle
 from abc import ABC, abstractmethod
@@ -12,11 +19,11 @@ from elastica.timestepper import extend_stepper_interface
 from matplotlib import animation
 from tqdm import tqdm
 
-from ..arguments import SphereArguments, MeshSurfaceArguments
 from ..components import MeshSurface, RigidBodyCallBack, RodCallBack
 from ..components.callback import MeshSurfaceCallBack
-from ..visualize.visualizer import rod_objects_3d_visualize
 from ..visualize.renderer import POVRayRenderer
+from ..visualize.visualizer import rod_objects_3d_visualize
+from ..arguments import MeshSurfaceArguments, SphereArguments
 
 
 class BaseSimulator(BaseSystemCollection, Constraints, Connections, Forcing,
@@ -25,7 +32,7 @@ class BaseSimulator(BaseSystemCollection, Constraints, Connections, Forcing,
     pass
 
 
-class SimulateMixin:
+class SimulatedEnvironment(ABC):
 
     def __init__(self,
                  *args,
@@ -34,7 +41,6 @@ class SimulateMixin:
                  update_interval: int = 1,
                  rendering_fps: int = 60,
                  **kwargs):
-        super().__init__(*args, **kwargs)
 
         self.simulator = BaseSimulator()
 
@@ -45,6 +51,16 @@ class SimulateMixin:
         self.stateful_stepper = PositionVerlet()
         self.total_steps = int(final_time / time_step)
         self.time_step = np.float64(float(final_time) / self.total_steps)
+        self.time_tracker = np.float64(0.0)
+
+        super().__init__(*args, **kwargs)
+
+    @abstractmethod
+    def setup(self):
+        pass
+
+    def reset_simulator(self):
+        self.simulator = BaseSimulator()
         self.time_tracker = np.float64(0.0)
 
     def _do_step(self):
@@ -65,24 +81,54 @@ class SimulateMixin:
             self.stateful_stepper, self.simulator)
 
 
-class RodObjectsMixin:
+class SimulateMixin(SimulatedEnvironment):
+    """
+    Deprecated: Use SimulatedEnvironment instead.
+    """
 
-    simulator: BaseSimulator
+    def __init__(self,
+                 *args,
+                 final_time: float,
+                 time_step: int,
+                 update_interval: int = 1,
+                 rendering_fps: int = 60,
+                 **kwargs):
+
+        self.final_time = final_time
+        self.time_step = time_step
+        self.update_interval = update_interval
+        self.rendering_fps = rendering_fps
+        self.stateful_stepper = PositionVerlet()
+        self.total_steps = int(final_time / time_step)
+        self.time_step = np.float64(float(final_time) / self.total_steps)
+        self.time_tracker = np.float64(0.0)
+
+        super().__init__(*args, **kwargs)
+
+    def _do_step(self):
+        self.time_tracker = self.do_step(
+            self.stateful_stepper,
+            self.stages_and_updates,
+            self.simulator,
+            self.time_tracker,
+            self.time_step,
+        )
+
+    def _finalize(self):
+        # Finalize the simulator
+        self.simulator.finalize()
+
+        # Prepare for time stepping
+        self.do_step, self.stages_and_updates = extend_stepper_interface(
+            self.stateful_stepper, self.simulator)
+
+
+class RodMixin(SimulatedEnvironment):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.shearable_rod = None
-
-        self.objects = []
-        self.action_flags = []
-        self.attach_flags = []
-        self.attachable_flags = []
-        self.object2id = {}
-        self.object_callbacks = []
-
         self.rod_callback = ea.defaultdict(list)
-        self.objects_callback = []
 
     def add_shearable_rod(
         self,
@@ -109,12 +155,21 @@ class RodObjectsMixin:
         )
         self.simulator.append(self.shearable_rod)
 
+    def _add_data_collection_callbacks(self, step_skip: int):
+        self.simulator.collect_diagnostics(self.shearable_rod).using(
+            RodCallBack,
+            step_skip=step_skip,
+            callback_params=self.rod_callback)
+
+
+class RigidMixin(SimulatedEnvironment):
+
     def add_sphere(
         self,
         center: np.ndarray,
         radius: float,
         density: float,
-    ):
+    ) -> ea.Sphere:
         """
         Add a sphere to the environment.
 
@@ -124,31 +179,15 @@ class RodObjectsMixin:
         """
         sphere = ea.Sphere(center, radius, density=density)
         self.simulator.append(sphere)
+        return sphere
 
-        self.objects.append(sphere)
-        self.object2id[sphere] = len(self.objects) - 1
-        self.action_flags.append(False)
-        self.attach_flags.append(False)
-        self.attachable_flags.append(False)
-        self.object_callbacks.append(ea.defaultdict(list))
-
-        # if self.shearable_rod is not None:
-        #     self.simulator.constrain(sphere).using(
-        #         PinJoint,
-        #         other=self.shearable_rod,
-        #         index=-1,
-        #         flag=self.action_flags,
-        #         flag_id=self.object2id[sphere],
-        #     )
-
-    def add_cylinder(self):
-        pass
-
-    def add_mesh_surface(self,
-                         mesh_path: str,
-                         center: np.ndarray = np.array([0., 0., 0.]),
-                         scale: np.ndarray = np.array([1., 1., 1.]),
-                         rotate: np.ndarray = np.array([0., 0., 0.])):
+    def add_mesh_surface(
+            self,
+            mesh_path: str,
+            center: np.ndarray = np.array([0., 0., 0.]),
+            scale: np.ndarray = np.array([1., 1., 1.]),
+            rotate: np.ndarray = np.array([0., 0., 0.]),
+    ) -> MeshSurface:
         mesh = MeshSurface(mesh_path)
         mesh.scale(scale)
         mesh.rotate(np.array([1, 0, 0]), rotate[0])
@@ -156,21 +195,72 @@ class RodObjectsMixin:
         mesh.rotate(np.array([0, 0, 1]), rotate[2])
         mesh.translate(center)
         self.simulator.append(mesh)
+        return mesh
 
+
+class ObjectsMixin(RigidMixin):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.objects = []
+        self.object2id = {}
+        self.object_callbacks = []
+
+    def add_sphere(
+        self,
+        center: np.ndarray,
+        radius: float,
+        density: float,
+    ) -> ea.Sphere:
+        """
+        Add a sphere to the environment.
+
+        Args:
+            center (np.ndarray): Center of the sphere.
+            radius (float): Radius of the sphere.
+        """
+        sphere = super().add_sphere(center, radius, density)
+        self.objects.append(sphere)
+        self.object2id[sphere] = len(self.objects) - 1
+        self.object_callbacks.append(ea.defaultdict(list))
+        return sphere
+
+    def add_mesh_surface(
+            self,
+            mesh_path: str,
+            center: np.ndarray = np.array([0., 0., 0.]),
+            scale: np.ndarray = np.array([1., 1., 1.]),
+            rotate: np.ndarray = np.array([0., 0., 0.]),
+    ) -> MeshSurface:
+        mesh = super().add_mesh_surface(mesh_path, center, scale, rotate)
         self.objects.append(mesh)
         self.object2id[mesh] = len(self.objects) - 1
-        self.action_flags.append(False)
-        self.attach_flags.append(False)
-        self.attachable_flags.append(False)
         self.object_callbacks.append(ea.defaultdict(list))
+        return mesh
+
+    def add_cylinder(self):
+        pass
+
+    def add_objects(self, object_configs: list):
+        for object_config in object_configs:
+            if isinstance(object_config, SphereArguments):
+                self.add_sphere(
+                    center=object_config.center,
+                    radius=object_config.radius,
+                    density=object_config.density,
+                )
+            elif isinstance(object_config, MeshSurfaceArguments):
+                self.add_mesh_surface(
+                    mesh_path=object_config.mesh_path,
+                    center=object_config.center,
+                    scale=object_config.scale,
+                    rotate=object_config.rotate,
+                )
+            else:
+                raise ValueError(
+                    f"Unsupported object type: {type(object_config)}")
 
     def _add_data_collection_callbacks(self, step_skip: int):
-        if self.shearable_rod is not None:
-            self.simulator.collect_diagnostics(self.shearable_rod).using(
-                RodCallBack,
-                step_skip=step_skip,
-                callback_params=self.rod_callback)
-
         for object_ in self.objects:
             if isinstance(object_, ea.RigidBodyBase):
                 self.simulator.collect_diagnostics(object_).using(
@@ -184,6 +274,56 @@ class RodObjectsMixin:
                     step_skip=step_skip,
                     callback_params=self.object_callbacks[
                         self.object2id[object_]])
+
+
+class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
+                                     SimulatedEnvironment):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.action_flags = []
+        self.attach_flags = []
+
+    def add_sphere(
+        self,
+        center: np.ndarray,
+        radius: float,
+        density: float,
+    ) -> ea.Sphere:
+        """
+        Add a sphere to the environment.
+
+        Args:
+            center (np.ndarray): Center of the sphere.
+            radius (float): Radius of the sphere.
+        """
+        sphere = super().add_sphere(center, radius, density)
+
+        self.action_flags.append(False)
+        self.attach_flags.append(False)
+
+        return sphere
+
+    def add_cylinder(self):
+        pass
+
+    def add_mesh_surface(
+            self,
+            mesh_path: str,
+            center: np.ndarray = np.array([0., 0., 0.]),
+            scale: np.ndarray = np.array([1., 1., 1.]),
+            rotate: np.ndarray = np.array([0., 0., 0.]),
+    ) -> MeshSurface:
+        mesh = super().add_mesh_surface(mesh_path, center, scale, rotate)
+
+        self.action_flags.append(False)
+        self.attach_flags.append(False)
+
+        return mesh
+
+    def _add_data_collection_callbacks(self, step_skip: int):
+        RodMixin._add_data_collection_callbacks(self, step_skip)
+        ObjectsMixin._add_data_collection_callbacks(self, step_skip)
 
     def export_callbacks(self, filename):
         """
@@ -356,7 +496,7 @@ class RodObjectsMixin:
                         name=f'mesh{id_}',
                         mesh_name='cube_mesh',
                         position=np.squeeze(object_callback['position'][i]),
-                        scale=0.5,  # TODO
+                        scale=1,  # TODO
                         matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
                     )
             # start = time.time()
@@ -371,32 +511,3 @@ class RodObjectsMixin:
             # print("Render time per render step: ", end - start)
         renderer.process_povray(multi_processing=True)
         renderer.create_video()
-
-
-class RodObjectsEnvironment(SimulateMixin, RodObjectsMixin, ABC):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    @abstractmethod
-    def setup(self):
-        pass
-
-    def add_objects(self, object_configs: list):
-        for object_config in object_configs:
-            if isinstance(object_config, SphereArguments):
-                self.add_sphere(
-                    center=object_config.center,
-                    radius=object_config.radius,
-                    density=object_config.density,
-                )
-            elif isinstance(object_config, MeshSurfaceArguments):
-                self.add_mesh_surface(
-                    mesh_path=object_config.mesh_path,
-                    center=object_config.center,
-                    scale=object_config.scale,
-                    rotate=object_config.rotate,
-                )
-            else:
-                raise ValueError(
-                    f"Unsupported object type: {type(object_config)}")

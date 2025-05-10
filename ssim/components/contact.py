@@ -3,15 +3,16 @@ __all__ = [
     "RodMeshSurfaceContactWithGridMethod",
 ]
 from typing import Union
+
 import elastica
-from elastica import NoContact, RodSphereContact, RodType, AllowedContactType, SystemType
-from elastica.interaction import node_to_element_position
-from elastica.interaction import node_to_element_velocity, elements_to_nodes_inplace
-from elastica._linalg import _batch_product_k_ik_to_ik, _batch_dot, _batch_norm
-from elastica.rod import RodBase
-from .surface import MeshSurface
 import numba
 import numpy as np
+from elastica import (AllowedContactType, NoContact, RodSphereContact, RodType,
+                      SystemType)
+from elastica._linalg import _batch_dot, _batch_norm, _batch_product_k_ik_to_ik
+from elastica.rod import RodBase
+
+from .surface import MeshSurface
 
 
 def find_contact_faces_idx(faces_grid, x_min, y_min, grid_size,
