@@ -96,7 +96,7 @@ class MeshDemoEnvironment(RodObjectsEnvironment):
                                flag_id=self.object2id[obj])
             elif isinstance(obj, MeshSurface):
                 mesh_data = mesh.Mesh.from_file(obj.model_path)
-                grid_size = 0.1  # 网格大小
+                grid_size = np.min(obj.mesh_scale) / 10
                 faces_grid = surface_grid(mesh_data.vectors, grid_size)
                 faces_grid["model_path"] = obj.model_path
                 faces_grid["grid_size"] = grid_size

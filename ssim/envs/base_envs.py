@@ -150,11 +150,11 @@ class RodObjectsMixin:
                          scale: np.ndarray = np.array([1., 1., 1.]),
                          rotate: np.ndarray = np.array([0., 0., 0.])):
         mesh = MeshSurface(mesh_path)
-        mesh.translate(center)
         mesh.scale(scale)
         mesh.rotate(np.array([1, 0, 0]), rotate[0])
         mesh.rotate(np.array([0, 1, 0]), rotate[1])
         mesh.rotate(np.array([0, 0, 1]), rotate[2])
+        mesh.translate(center)
         self.simulator.append(mesh)
 
         self.objects.append(mesh)
@@ -356,7 +356,7 @@ class RodObjectsMixin:
                         name=f'mesh{id_}',
                         mesh_name='cube_mesh',
                         position=np.squeeze(object_callback['position'][i]),
-                        scale=1,  # TODO
+                        scale=0.5,  # TODO
                         matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
                     )
             # start = time.time()
