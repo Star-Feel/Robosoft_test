@@ -182,5 +182,5 @@ class POVRayRenderer:
             filename = self._ouput_filename + "_" + view_name + ".mp4"
 
             os.system(
-                f"ffmpeg -r {self._fps} -i {imageset_path}/frame_%05d.png {filename}"
+                f"ffmpeg -r {self._fps} -i {imageset_path}/frame_%05d.png {filename} -y"
             )
