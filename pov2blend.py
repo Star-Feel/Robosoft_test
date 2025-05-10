@@ -4,6 +4,7 @@ import os
 import math
 import time
 import tqdm
+import random
 import mathutils
 
 class BlenderRenderer:
@@ -129,20 +130,28 @@ class BlenderRenderer:
         # 重新创建蛇
         self.set_snake()
 
-    def load_pov_settings(self, pov_file, obj_path="/data/wjs/wrp/SoftRoboticaSimulator/assets/basketball/BasketBall.obj"):
+    def load_pov_settings(self, pov_file, obj_path=None):
         self.pov_file = pov_file
         with open(pov_file, 'r') as file:
             self.pov_content = file.read()
         
         self.set_camera()
         # self.set_light()
-        if obj_path:
-            self.load_obj(obj_path)
-        else:
-            self.set_sphere()
+        self.load_obj(obj_path)
         self.set_snake()
 
-    def load_obj(self, obj_path):
+    def load_obj(self, obj_path=None):
+        # obj_path == None, then load obj randomly
+        if obj_path is None:
+            assets_path  = "/data/wjs/wrp/SoftRoboticaSimulator/assets"
+            obj_list = os.listdir(assets_path)
+            obj_chosen = random.choice(obj_list)
+            file_list = os.listdir(os.path.join(assets_path, obj_chosen))
+            for file in file_list:
+                if file.endswith('.obj'):
+                    obj_path = os.path.join(assets_path, obj_chosen, file)
+                    break
+
         bpy.ops.wm.obj_import(filepath=obj_path)
         # 放置在球体对应位置，并设置材质
         sphere_match = re.findall(r'sphere\s*{([^}]*)}', self.pov_content, re.DOTALL)[0]
@@ -333,7 +342,7 @@ if __name__ == "__main__":
     pov_dir = "/data/wjs/wrp/SoftRoboticaSimulator/work_dirs/povray_continuum_snake/diag"
     pov_file = "/data/wjs/wrp/SoftRoboticaSimulator/work_dirs/povray_continuum_snake/diag/frame_00000.pov"
     # obj_path = "/data/wjs/wrp/SoftRoboticaSimulator/assets/lamed_chair/Lamed_chair.obj"
-    obj_path = "/data/wjs/wrp/SoftRoboticaSimulator/assets/basketball/BasketBall.obj"
+    # obj_path = "/data/wjs/wrp/SoftRoboticaSimulator/assets/basketball/BasketBall.obj"
     out_dir = "/data/wjs/wrp/SoftRoboticaSimulator/renders"
 
     pov_settings = BlenderRenderer()
