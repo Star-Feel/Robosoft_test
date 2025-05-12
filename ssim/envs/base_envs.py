@@ -506,12 +506,13 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
                         radius=np.squeeze(object_callback['radius'][i]),
                     )
                 elif isinstance(object_, MeshSurface):
+                    scale = np.mean(object_.mesh_scale)
                     renderer.add_stage_object(
                         object_type='mesh',
                         name=f'mesh{id_}',
                         mesh_name='cube_mesh',
                         position=np.squeeze(object_callback['position'][i]),
-                        scale=1,  # TODO
+                        scale=scale,
                         matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
                     )
             # start = time.time()

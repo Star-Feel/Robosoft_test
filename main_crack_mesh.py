@@ -56,16 +56,16 @@ def main():
     env.setup()
     success = run_simulation(env)
 
-    env.visualize_2d(video_name="2d.mp4",
-                     fps=env.rendering_fps,
-                     xlim=(0, 4),
-                     ylim=(-2, 2),
-                     equal_aspect=True)
+    # env.visualize_2d(video_name="2d.mp4",
+    #                  fps=env.rendering_fps,
+    #                  xlim=(0, 4),
+    #                  ylim=(-2, 2),
+    #                  equal_aspect=True)
     # env.visualize_3d(video_name="3d.mp4", fps=env.rendering_fps)
     env.export_callbacks("grab_mesh_callbacks.pkl")
-    # env.visualize_3d_povray(video_name=os.path.join(work_dir, "demo_povray"),
-    #                         output_images_dir=os.path.join(work_dir, "povray"),
-    #                         fps=20)
+    env.visualize_3d_povray(video_name=os.path.join(work_dir, "demo_povray"),
+                            output_images_dir=os.path.join(work_dir, "povray"),
+                            fps=20)
     return success
 
 
