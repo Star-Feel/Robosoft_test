@@ -10,14 +10,13 @@ import elastica as ea
 import numpy as np
 from elastica import RigidBodyBase
 from elastica._calculus import _isnan_check
-from stl import mesh
 
 from ..arguments import (MeshSurfaceArguments, RodArguments,
                          SimulatorArguments, SphereArguments, SuperArguments)
 from ..components import (ChangeableUniformForce,
                           RigidBodyAnalyticalLinearDamper,
                           RodMeshSurfaceContactWithGridMethod)
-from ..components.contact import JoinableRodSphereContact, surface_grid
+from ..components.contact import JoinableRodSphereContact, surface_grid_xyz
 from ..components.surface.mesh_surface import MeshSurface
 from .base_envs import FetchableRodObjectsEnvironment
 
@@ -35,7 +34,7 @@ class MeshDemoEnvironment(FetchableRodObjectsEnvironment):
     def __init__(self, configs: MeshDemoArguments):
 
         self.rod_config = configs.rod
-        self.object_configs = configs.objects
+        self.object_configs = configs.objects if configs.objects else []
         self.sim_config = configs.simulator
 
         super().__init__(
@@ -85,18 +84,17 @@ class MeshDemoEnvironment(FetchableRodObjectsEnvironment):
         for obj in self.objects:
             if isinstance(obj, ea.Sphere):
                 self.simulator.detect_contact_between(
-                    self.shearable_rod,
-                    obj).using(JoinableRodSphereContact,
-                               k=10,
-                               nu=0,
-                               velocity_damping_coefficient=1e3,
-                               friction_coefficient=10,
-                               flag=self.action_flags,
-                               flag_id=self.object2id[obj])
+                    self.shearable_rod, obj).using(
+                        JoinableRodSphereContact,
+                        k=10,
+                        nu=0,
+                        velocity_damping_coefficient=1e3,
+                        friction_coefficient=10,
+                    )
             elif isinstance(obj, MeshSurface):
-                mesh_data = mesh.Mesh.from_file(obj.model_path)
                 grid_size = np.min(obj.mesh_scale) / 10
-                faces_grid = surface_grid(mesh_data.vectors, grid_size)
+                # faces: (dim, n_faces, n_points)
+                faces_grid = surface_grid_xyz(obj.faces, grid_size)
                 faces_grid["model_path"] = obj.model_path
                 faces_grid["grid_size"] = grid_size
                 faces_grid["surface_reorient"] = obj.mesh_orientation

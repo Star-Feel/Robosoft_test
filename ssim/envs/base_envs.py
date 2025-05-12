@@ -7,7 +7,9 @@ __all__ = [
     "SimulatedEnvironment",
 ]
 
+import os
 import pickle
+import shutil
 from abc import ABC, abstractmethod
 
 import elastica as ea
@@ -19,11 +21,11 @@ from elastica.timestepper import extend_stepper_interface
 from matplotlib import animation
 from tqdm import tqdm
 
+from ..arguments import MeshSurfaceArguments, SphereArguments
 from ..components import MeshSurface, RigidBodyCallBack, RodCallBack
 from ..components.callback import MeshSurfaceCallBack
 from ..visualize.renderer import POVRayRenderer
 from ..visualize.visualizer import rod_objects_3d_visualize
-from ..arguments import MeshSurfaceArguments, SphereArguments
 
 
 class BaseSimulator(BaseSystemCollection, Constraints, Connections, Forcing,
@@ -427,6 +429,17 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
                                                        edgecolor='b',
                                                        facecolor=color)
                         ax.add_patch(object_plots[idx])
+                    elif isinstance(obj, MeshSurface):
+
+                        # 添加新的圆点
+                        center_x = object_positions[idx][time][2]
+                        center_y = object_positions[idx][time][0]
+                        color = 'red' if target_last and idx == len(
+                            self.objects) - 1 else 'lightblue'
+                        object_plots[idx] = ax.plot(center_x,
+                                                    center_y,
+                                                    'o',
+                                                    color=color)[0]
 
                 # 捕捉当前帧
                 writer.grab_frame()
@@ -455,6 +468,8 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
         width=1920,
         height=1080,
     ):
+        if os.path.exists(output_images_dir):
+            shutil.rmtree(output_images_dir)
         xz_positions = [
             np.array(callback["position"])[:, [0, 2], 0]
             for callback in self.object_callbacks
