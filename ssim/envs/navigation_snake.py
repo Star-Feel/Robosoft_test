@@ -200,9 +200,9 @@ class NavigationSnakeTorqueEnvironment(FetchableRodObjectsEnvironment):
                 faces_grid["model_path"] = obj.model_path
                 faces_grid["grid_size"] = grid_size
                 faces_grid["surface_reorient"] = obj.mesh_orientation
-                k = 1e4  # 接触刚度系数
-                nu = 10  # 阻尼系数
-                surface_tol = 1e-2
+                k = 1e3  # 接触刚度系数
+                nu = 100  # 阻尼系数
+                surface_tol = 1e-6
                 self.simulator.detect_contact_between(
                     self.shearable_rod,
                     obj).using(RodMeshSurfaceContactWithGridMethod,
