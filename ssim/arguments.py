@@ -1,6 +1,6 @@
 import dataclasses
 from dataclasses import dataclass, field, fields
-from typing import Any, Iterable, NewType, Optional, Sequence, Type, Union
+from typing import Any, Iterable, NewType, Optional, Sequence, Type, Union, List
 
 import numpy as np
 from transformers import HfArgumentParser
@@ -115,12 +115,13 @@ class SuperArguments:
 
         return cls(**data)
 
-
 @dataclass
-class SphereArguments:
-    center: np.ndarray = field(default_factory=list)
-    radius: float = field(default_factory=float)
-    density: float = field(default_factory=float)
+class RodControllerArgumets:
+    trainable: bool = False
+    number_of_control_points: int = 6
+    obs_state_points: int = 10
+
+    boundary: Optional[tuple] = None
 
 
 @dataclass
@@ -134,6 +135,24 @@ class SimulatorArguments:
 
 
 @dataclass
+class RodControllerArgumets:
+    trainable: bool = False
+    number_of_control_points: int = 6
+    obs_state_points: int = 10
+
+    boundary: Optional[tuple] = None
+
+
+@dataclass
+class SphereArguments:
+    center: np.ndarray = field(default_factory=list)
+    radius: float = field(default_factory=float)
+    density: float = field(default_factory=float)
+    direction: np.ndarray = field(
+        default_factory=lambda: np.array([0., 0., 0.]))
+
+
+@dataclass
 class RodArguments:
 
     n_elem: int = field(default_factory=int)
@@ -141,8 +160,10 @@ class RodArguments:
     direction: np.ndarray = field(default_factory=list)
     normal: np.ndarray = field(default_factory=list)
     base_length: float = field(default=0.35)
+    radius_tip: float = field(default=0.05)
     base_radius: float = field(default=0.0035)
     density: float = field(default=1000.0)
+    nu: float = field(default=30)
     youngs_modulus: float = field(default_factory=float)
     poisson_ratio: float = field(default=0.5)
 
@@ -161,4 +182,5 @@ args_dict = {
     "sphere": SphereArguments,
     "mesh_surface": MeshSurfaceArguments,
     "simulator": SimulatorArguments,
+    "controller": RodControllerArgumets
 }

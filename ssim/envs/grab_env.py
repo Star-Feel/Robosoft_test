@@ -10,7 +10,6 @@ import elastica as ea
 import numpy as np
 from elastica import OneEndFixedRod, RigidBodyBase
 from elastica._calculus import _isnan_check
-from elastica.timestepper import extend_stepper_interface
 from stl import mesh
 
 from ..arguments import (MeshSurfaceArguments, RodArguments,
@@ -20,7 +19,7 @@ from ..components import (ChangeableUniformForce,
                           RodMeshSurfaceContactWithGridMethod)
 from ..components.contact import JoinableRodSphereContact, surface_grid
 from ..components.surface.mesh_surface import MeshSurface
-from .base_envs import RodObjectsEnvironment
+from .base_envs import FetchableRodObjectsEnvironment
 
 
 @dataclass
@@ -31,7 +30,7 @@ class SoftGrabArguments(SuperArguments):
     simulator: SimulatorArguments = None
 
 
-class SoftGrabEnvironment(RodObjectsEnvironment):
+class SoftGrabEnvironment(FetchableRodObjectsEnvironment):
 
     def __init__(self, configs: SoftGrabArguments):
 
@@ -100,8 +99,11 @@ class SoftGrabEnvironment(RodObjectsEnvironment):
                                nu=0,
                                velocity_damping_coefficient=1e3,
                                friction_coefficient=10,
-                               flag=self.action_flags,
-                               flag_id=self.object2id[obj])
+                               action_flags=self.action_flags,
+                               attach_flags=self.attach_flags,
+                               flag_id=self.object2id[obj],
+                               collision=True,
+                               eps=0.1)
             elif isinstance(obj, MeshSurface):
                 mesh_data = mesh.Mesh.from_file(obj.model_path)
                 grid_size = 0.1  # 网格大小

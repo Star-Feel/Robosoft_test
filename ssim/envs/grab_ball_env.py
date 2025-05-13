@@ -5,14 +5,13 @@ from dataclasses import dataclass
 import elastica as ea
 import numpy as np
 from elastica._calculus import _isnan_check
-from elastica.timestepper import extend_stepper_interface
 
 from ..arguments import (RodArguments, SimulatorArguments, SphereArguments,
                          SuperArguments)
 from ..components import (ChangeableUniformForce,
                           RigidBodyAnalyticalLinearDamper)
 from ..components.contact import JoinableRodSphereContact
-from .base_envs import RodObjectsEnvironment
+from .base_envs import FetchableRodObjectsEnvironment
 
 
 @dataclass
@@ -23,7 +22,7 @@ class GrabBallArguments(SuperArguments):
     simulator: SimulatorArguments
 
 
-class GrabBallEnvironment(RodObjectsEnvironment):
+class GrabBallEnvironment(FetchableRodObjectsEnvironment):
 
     def __init__(self, configs: GrabBallArguments):
         self.rod_config = configs.rod

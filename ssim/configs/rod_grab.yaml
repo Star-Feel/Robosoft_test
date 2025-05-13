@@ -4,9 +4,9 @@ objects:
     center: [2, 0.0, 0.3]
     radius: 0.3
     density: 1.0
-  # - type: mesh_surface
-  #   mesh_path: /data/zyw/workshop/PyElastica/tests/cube.stl
-  #   center: [0.0, 0.0, 3.0]
+  - type: mesh_surface
+    mesh_path: /data/zyw/workshop/PyElastica/tests/cube.stl
+    center: [0.0, 0.0, 3.0]
   - type: sphere
     center: [0, 2, 0.3]
     radius: 0.3

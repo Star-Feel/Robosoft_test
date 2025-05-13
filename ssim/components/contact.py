@@ -170,7 +170,8 @@ def _calculate_contact_forces_rod_mesh_surface(
 
     # Damping force response due to velocity towards the plane
     element_velocity = elastica.contact_utils._node_to_element_velocity(
-        mass=mass, node_velocity_collection=velocity_collection)
+        mass=mass, node_velocity_collection=velocity_collection
+    )
 
     if len(face_idx_array) > 0:
         element_position_contacts = element_position[:, position_idx_array]
@@ -189,32 +190,38 @@ def _calculate_contact_forces_rod_mesh_surface(
     # Elastic force response due to penetration
 
     distance_from_plane = _batch_dot(
-        normals_on_elements,
-        (element_position_contacts - contact_face_centers))
+        normals_on_elements, (element_position_contacts - contact_face_centers)
+    )
     plane_penetration = (
-        -np.abs(np.minimum(distance_from_plane - radius_contacts, 0.0))**1.5)
-    elastic_force = -k * _batch_product_k_ik_to_ik(plane_penetration,
-                                                   normals_on_elements)
+        -np.abs(np.minimum(distance_from_plane - radius_contacts, 0.0))**1.5
+    )
+    elastic_force = -k * _batch_product_k_ik_to_ik(
+        plane_penetration, normals_on_elements
+    )
 
     normal_component_of_element_velocity = _batch_dot(
-        normals_on_elements, element_velocity_contacts)
+        normals_on_elements, element_velocity_contacts
+    )
     damping_force = -nu * _batch_product_k_ik_to_ik(
-        normal_component_of_element_velocity, normals_on_elements)
+        normal_component_of_element_velocity, normals_on_elements
+    )
 
     # Compute total plane response force
     plane_response_force_contacts = elastic_force + damping_force
 
     # Check if the rod elements are in contact with plane.
-    no_contact_point_idx = np.where((distance_from_plane -
-                                     radius_contacts) > surface_tol)[0]
+    no_contact_point_idx = np.where(
+        (distance_from_plane - radius_contacts) > surface_tol
+    )[0]
     # If rod element does not have any contact with plane, plane cannot apply response
     # force on the element. Thus lets set plane response force to 0.0 for the no contact points.
     plane_response_force_contacts[..., no_contact_point_idx] = 0.0
 
     plane_response_forces = np.zeros_like(external_forces)
     for i in range(len(position_idx_array)):
-        plane_response_forces[:, position_idx_array[
-            i]] += plane_response_force_contacts[:, i]
+        plane_response_forces[
+            :, position_idx_array[i]
+        ] += plane_response_force_contacts[:, i]
 
     # Update the external forces
     elastica.contact_utils._elements_to_nodes_inplace(plane_response_forces,
@@ -293,12 +300,15 @@ class RodMeshSurfaceContactWithGridMethod(NoContact):
             AllowedContactType
         """
         if not issubclass(system_one.__class__, RodBase) or not issubclass(
-                system_two.__class__, MeshSurface):
+                system_two.__class__, MeshSurface
+        ):
             raise TypeError(
                 "Systems provided to the contact class have incorrect order/type. \n"
                 " First system is {0} and second system is {1}. \n"
-                " First system should be a rod, second should be a mesh surface"
-                .format(system_one.__class__, system_two.__class__))
+                " First system should be a rod, second should be a mesh surface".format(
+                    system_one.__class__, system_two.__class__
+                )
+            )
 
         elif not faces_grid["grid_size"] == grid_size:
             raise TypeError(
@@ -355,7 +365,7 @@ class RodMeshSurfaceContactWithGridMethod(NoContact):
             system_one.position_collection,
         )
 
-        return  _calculate_contact_forces_rod_mesh_surface(
+        return _calculate_contact_forces_rod_mesh_surface(
             self.mesh_surface_face_normals,
             self.mesh_surface_face_centers,
             self.element_position,
@@ -373,16 +383,17 @@ class RodMeshSurfaceContactWithGridMethod(NoContact):
 
 class JoinableRodSphereContact(RodSphereContact):
 
-    def __init__(
-        self,
-        k: float,
-        nu: float,
-        velocity_damping_coefficient=0.0,
-        friction_coefficient=0.0,
-        index: int = -1,
-        flag: list[bool] = [False],
-        flag_id: int = 0,
-    ):
+    def __init__(self,
+                 k: float,
+                 nu: float,
+                 velocity_damping_coefficient=0.0,
+                 friction_coefficient=0.0,
+                 index: int = -1,
+                 action_flags: list[bool] = [False],
+                 attach_flags: list[bool] = [False],
+                 flag_id: int = 0,
+                 collision: bool = True,
+                 eps: float = 1e-3):
         """
         Parameters
         ----------
@@ -404,9 +415,12 @@ class JoinableRodSphereContact(RodSphereContact):
         )
 
         self.index = index
-        self.flag = flag
+        self.action_flags = action_flags
+        self.attach_flags = attach_flags
         self.flag_id = flag_id
         self.relative_position = None
+        self.collision = collision
+        self.eps = eps
 
     def _check_systems_validity(
         self,
@@ -414,6 +428,35 @@ class JoinableRodSphereContact(RodSphereContact):
         system_two,
     ) -> None:
         pass
+
+    def _attach_check(
+        self,
+        system_one: RodType,
+        system_two: AllowedContactType,
+    ) -> bool:
+        """
+        Check if the rod is attached to the sphere.
+
+        Parameters
+        ----------
+        system_one: object
+            Rod object.
+        system_two: object
+            Sphere object.
+
+        Returns
+        -------
+        bool
+            True if the rod is attached to the sphere, False otherwise.
+        """
+        radias = system_two.radius
+        center = system_two.position_collection
+        rod_pos = system_one.position_collection
+        if np.linalg.norm(rod_pos[..., -1] -
+                          center[..., 0]) <= radias * (1 + self.eps):
+            self.attach_flags[self.flag_id] = True
+        else:
+            self.attach_flags[self.flag_id] = False
 
     def apply_contact(self, system_one: RodType,
                       system_two: AllowedContactType) -> None:
@@ -428,9 +471,11 @@ class JoinableRodSphereContact(RodSphereContact):
             Sphere object.
 
         """
-        if not self.flag[self.flag_id]:
+        self._attach_check(system_one, system_two)
+        if not self.action_flags[self.flag_id]:
             self.relative_position = None
-            super().apply_contact(system_one, system_two)
+            if self.collision:
+                super().apply_contact(system_one, system_two)
         else:
             if self.relative_position is None:
                 self.relative_position = \
@@ -443,3 +488,4 @@ class JoinableRodSphereContact(RodSphereContact):
 
             system_two.velocity_collection[
                 ..., 0] = system_one.velocity_collection[..., self.index]
+            # print(system_two.velocity_collection[..., 0])

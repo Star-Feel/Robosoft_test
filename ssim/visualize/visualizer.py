@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib import animation
 from tqdm import tqdm
 import elastica as ea
+from ..components.surface.mesh_surface import MeshSurface
 
 
 def plot_video(
@@ -375,6 +376,19 @@ def rod_objects_3d_visualize(
             z = obj.radius * np.outer(np.ones(np.size(u)), np.cos(v))
             sphere_surface = ax.plot_surface(x, y, z, color='b', alpha=0.6)
             objects_plot.append(sphere_surface)
+        # elif isinstance(obj, MeshSurface):
+        #     # 将网格表面绘制为三角形面片
+        #     vertices = obj.face_centers
+        #     faces = obj.faces
+        #     for face in faces:
+        #         # 获取面片的顶点坐标
+        #         face_vertices = vertices[face]
+        #         # 创建三角形面片
+        #         triangle = ax.plot_trisurf(
+        #             face_vertices[:, 0], face_vertices[:, 1], face_vertices[:, 2],
+        #             color='g', alpha=0.6
+        #         )
+        #         objects_plot.append(triangle)
 
     # 时间显示
     time_template = 'Time: %.3fs'
@@ -445,3 +459,88 @@ def rod_objects_3d_visualize(
 
     plt.close()
     return anim
+
+
+def plot_contour(
+    positions: np.ndarray,
+    xlim=None,
+    ylim=None,
+    levels=50,
+    save_path=None,
+):
+    """
+    Plot a simple 2D line plot based on positions.
+
+    Args:
+        positions: 2D coordinates of shape (time_steps, n_points, 2).
+        xlim: Tuple specifying x-axis limits (optional).
+        ylim: Tuple specifying y-axis limits (optional).
+    """
+    # Extract x and y coordinates
+    x = positions[:, :, 0]
+    y = positions[:, :, 1]
+
+    # Plot the positions as a simple line plot
+    plt.figure(figsize=(8, 6))
+    for i in range(x.shape[1]):
+        plt.plot(x[:, i], y[:, i], label=f"Point {i + 1}")
+    plt.xlabel("X")
+    plt.ylabel("Y")
+    plt.title("2D Trajectory Plot")
+    # plt.legend()
+
+    # Set axis limits if provided
+    if xlim:
+        plt.xlim(xlim)
+    if ylim:
+        plt.ylim(ylim)
+
+    if save_path:
+        plt.savefig(save_path, dpi=300)
+
+
+def plot_contour_with_spheres(
+    positions: np.ndarray,
+    spheres: list,
+    xlim=None,
+    ylim=None,
+    save_path=None,
+):
+    """
+    Plot a 2D line plot based on positions and overlay spheres.
+
+    Args:
+        positions: 2D coordinates of shape (time_steps, n_points, 2).
+        spheres: Array of spheres, each defined as (x, y, z, r).
+        xlim: Tuple specifying x-axis limits (optional).
+        ylim: Tuple specifying y-axis limits (optional).
+    """
+    # Extract x and z coordinates
+    x = positions[:, :, 0]
+    z = positions[:, :, 1]
+
+    # Plot the positions as a simple line plot
+    plt.figure(figsize=(8, 6))
+    for i in range(x.shape[1]):
+        plt.plot(z[:, i], x[:, i], label=f"Point {i + 1}")
+    plt.xlabel("Z")
+    plt.ylabel("X")
+    plt.title("2D Trajectory Plot")
+
+    # Overlay spheres
+    for sphere in spheres:
+        center_x, _, center_z, radius = sphere
+        circle = plt.Circle((center_z, center_x), radius, color='b', alpha=0.3)
+        plt.gca().add_patch(circle)
+
+    # Set axis limits if provided
+    if xlim:
+        plt.xlim(xlim)
+    if ylim:
+        plt.ylim(ylim)
+
+    if save_path:
+        plt.savefig(save_path, dpi=300)
+        plt.close()
+    else:
+        plt.show()
