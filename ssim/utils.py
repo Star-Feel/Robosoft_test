@@ -1,29 +1,44 @@
+import json
+
 import elastica as ea
 import numpy as np
 import yaml
-import json
 
 
 def save_json(data, file_path: str, **kwargs):
     with open(file_path, "w") as f:
         json.dump(data, f, **kwargs)
 
+
 def load_yaml(file_path: str):
     with open(file_path, "r") as f:
         data = yaml.safe_load(f)
     return data
 
+
 def save_yaml(data, file_path: str):
     with open(file_path, "w") as f:
         yaml.dump(data, f, default_flow_style=False)
+
+
+def save_json(data, file_path: str, **kwargs):
+    with open(file_path, "w") as f:
+        json.dump(data, f, **kwargs)
+
+
+def load_json(file_path: str):
+    with open(file_path, "r") as f:
+        data = json.load(f)
+    return data
+
 
 def is_contact(sphere: ea.Sphere, rod: ea.CosseratRod):
     radias = sphere.radius
     center = sphere.position_collection
     rod_pos = rod.position_collection
     flag = False
-    if np.linalg.norm(rod_pos[..., -1] -
-                      center[..., 0]) <= radias * (1 + 1e-3):
+    if np.linalg.norm(rod_pos[..., -1]
+                      - center[..., 0]) <= radias * (1 + 1e-3):
         flag = True
     return flag
 
@@ -54,6 +69,7 @@ def compute_rotation_matrix(theta: np.ndarray) -> np.ndarray:
                    [np.sin(theta[2]), np.cos(theta[2]), 0], [0, 0, 1]])
 
     return Rz @ Ry @ Rx
+
 
 def compute_quaternion_from_matrix(matrix: np.ndarray) -> np.ndarray:
     assert matrix.shape == (3, 3), "输入必须是 3x3 的旋转矩阵"
@@ -115,7 +131,6 @@ def compute_quaternion_from_matrix(matrix: np.ndarray) -> np.ndarray:
 #         ],
 #     ])
 #     return R
-
 
 # def compute_quaternion_from_matrix(Q):
 #     # Compute target tip orientation using quaternions.

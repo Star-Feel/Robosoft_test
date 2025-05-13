@@ -11,20 +11,21 @@ import elastica as ea
 import numpy as np
 from elastica import OneEndFixedRod, RigidBodyBase
 
-from ..arguments import (RodArguments, RodControllerArgumets,
-                         MeshSurfaceArguments, SimulatorArguments,
-                         SphereArguments, SuperArguments)
-from ..components import (MuscleTorquesWithVaryingBetaSplines,
-                          RigidBodyAnalyticalLinearDamper,
-                          JoinableRodSphereContact,
-                          RodMeshSurfaceContactWithGridMethod)
-from ..utils import (compute_quaternion_from_matrix, compute_rotation_matrix,
-                     isnan_check)
+from ..arguments import (
+    RodArguments, RodControllerArgumets, MeshSurfaceArguments,
+    SimulatorArguments, SphereArguments, SuperArguments
+)
+from ..components import (
+    MuscleTorquesWithVaryingBetaSplines, RigidBodyAnalyticalLinearDamper,
+    JoinableRodSphereContact, RodMeshSurfaceContactWithGridMethod
+)
+from ..utils import (
+    compute_quaternion_from_matrix, compute_rotation_matrix, isnan_check
+)
 from .base_envs import RodControlMixin, FetchableRodObjectsEnvironment, SimulatedEnvironment
 from ..components.surface.mesh_surface import MeshSurface
 from ..components.contact import surface_grid
 from stl import mesh
-
 
 
 @dataclass
@@ -36,8 +37,9 @@ class ControllableGrabArguments(SuperArguments):
     controller: RodControllerArgumets = None
 
 
-class ControllableGrabEnvironment(FetchableRodObjectsEnvironment,
-                                  RodControlMixin, SimulatedEnvironment):
+class ControllableGrabEnvironment(
+    FetchableRodObjectsEnvironment, RodControlMixin, SimulatedEnvironment
+):
 
     def __init__(self, configs: ControllableGrabArguments):
 
@@ -51,7 +53,8 @@ class ControllableGrabEnvironment(FetchableRodObjectsEnvironment,
             time_step=self.sim_config.time_step,
             update_interval=self.sim_config.update_interval,
             rendering_fps=self.sim_config.rendering_fps,
-            number_of_control_points=self.control_config.number_of_control_points,
+            number_of_control_points=self.control_config.
+            number_of_control_points,
             n_elem=self.rod_config.n_elem,
             obs_state_points=self.control_config.obs_state_points,
             trainable=self.control_config.trainable,
@@ -82,10 +85,13 @@ class ControllableGrabEnvironment(FetchableRodObjectsEnvironment,
     def setup(self):
 
         shear_modulus = self.rod_config.youngs_modulus / (
-            self.rod_config.poisson_ratio + 1.0)
+            self.rod_config.poisson_ratio + 1.0
+        )
 
-        radius_along_rod = np.linspace(self.rod_config.base_radius, self.rod_config.radius_tip,
-                                       self.rod_config.n_elem)
+        radius_along_rod = np.linspace(
+            self.rod_config.base_radius, self.rod_config.radius_tip,
+            self.rod_config.n_elem
+        )
         self.add_shearable_rod(
             n_elem=self.rod_config.n_elem,
             start=self.rod_config.start,
@@ -107,19 +113,21 @@ class ControllableGrabEnvironment(FetchableRodObjectsEnvironment,
                     theta=None,
                 )
             elif isinstance(object_config, MeshSurfaceArguments):
-                self.add_mesh_surface(object_config.mesh_path,
-                                      object_config.center,
-                                      object_config.scale,
-                                      object_config.rotate)
+                self.add_mesh_surface(
+                    object_config.mesh_path, object_config.center,
+                    object_config.scale, object_config.rotate
+                )
 
         # fix one end of the rod
         self.simulator.constrain(self.shearable_rod).using(
             OneEndFixedRod,
             constrained_position_idx=(0, ),
-            constrained_director_idx=(0, ))
+            constrained_director_idx=(0, )
+        )
 
         callback_step_skip = int(
-            1.0 / (self.sim_config.rendering_fps * self.time_step))
+            1.0 / (self.sim_config.rendering_fps * self.time_step)
+        )
         # Add muscle torques acting on the arm for actuation
         # MuscleTorquesWithVaryingBetaSplines uses the control points selected
         # by RL to generate torques along the arm.
@@ -133,7 +141,8 @@ class ControllableGrabEnvironment(FetchableRodObjectsEnvironment,
             direction=str("normal"),
             step_skip=callback_step_skip,
             max_rate_of_change_of_activation=np.infty,
-            torque_profile_recorder=self.torque_profile_list_for_muscle_in_normal_dir,
+            torque_profile_recorder=self.
+            torque_profile_list_for_muscle_in_normal_dir,
             # callbacks=self.torque_normal_callback,
         )
 
@@ -147,7 +156,8 @@ class ControllableGrabEnvironment(FetchableRodObjectsEnvironment,
             direction=str("binormal"),
             step_skip=callback_step_skip,
             max_rate_of_change_of_activation=np.infty,
-            torque_profile_recorder=self.torque_profile_list_for_muscle_in_binormal_dir,
+            torque_profile_recorder=self.
+            torque_profile_list_for_muscle_in_binormal_dir,
             # callbacks=self.torque_binormal_callback,
         )
 
@@ -161,7 +171,8 @@ class ControllableGrabEnvironment(FetchableRodObjectsEnvironment,
             direction=str("tangent"),
             step_skip=callback_step_skip,
             max_rate_of_change_of_activation=np.infty,
-            torque_profile_recorder=self.torque_profile_list_for_muscle_in_twist_dir,
+            torque_profile_recorder=self.
+            torque_profile_list_for_muscle_in_twist_dir,
             # callbacks=self.torque_twist_callback,
         )
 
@@ -176,17 +187,19 @@ class ControllableGrabEnvironment(FetchableRodObjectsEnvironment,
         for obj in self.objects:
             if isinstance(obj, ea.Sphere):
                 self.simulator.detect_contact_between(
-                    self.shearable_rod,
-                    obj).using(JoinableRodSphereContact,
-                               k=10,
-                               nu=30,
-                               velocity_damping_coefficient=1e3,
-                               friction_coefficient=10,
-                               action_flags=self.action_flags,
-                               attach_flags=self.attach_flags,
-                               flag_id=self.object2id[obj],
-                               collision=False,
-                               eps=1)
+                    self.shearable_rod, obj
+                ).using(
+                    JoinableRodSphereContact,
+                    k=10,
+                    nu=30,
+                    velocity_damping_coefficient=1e3,
+                    friction_coefficient=10,
+                    action_flags=self.action_flags,
+                    attach_flags=self.attach_flags,
+                    flag_id=self.object2id[obj],
+                    collision=False,
+                    eps=1
+                )
             elif isinstance(obj, MeshSurface):
                 mesh_data = mesh.Mesh.from_file(obj.model_path)
                 faces_grid = surface_grid(mesh_data.vectors, 0.1)
@@ -194,14 +207,15 @@ class ControllableGrabEnvironment(FetchableRodObjectsEnvironment,
                 faces_grid["grid_size"] = 0.1
                 faces_grid["surface_reorient"] = obj.mesh_orientation
                 self.simulator.detect_contact_between(
-                    self.shearable_rod,
-                    obj).using(RodMeshSurfaceContactWithGridMethod,
-                               k=1e4, # 接触刚度系数
-                               nu=30, # 阻尼系数
-                               faces_grid=faces_grid,
-                               grid_size=0.1,
-                               surface_tol=1e-2)
-        
+                    self.shearable_rod, obj).using(
+                        RodMeshSurfaceContactWithGridMethod,
+                        k=1e4,  # 接触刚度系数
+                        nu=30,  # 阻尼系数
+                        faces_grid=faces_grid,
+                        grid_size=0.1,
+                        surface_tol=1e-2,
+                    )
+
         dampen = 10000
         for _, object_ in enumerate(self.objects):
             if isinstance(object_, RigidBodyBase):
@@ -235,6 +249,13 @@ class ControllableGrabEnvironment(FetchableRodObjectsEnvironment,
 
         return self.get_state()
 
+    def get_rod_state(self):
+
+        position = self.shearable_rod.position_collection
+        velocity = self.shearable_rod.velocity_collection
+
+        return position, velocity
+
     def get_state(self):
         """
         Returns current state of the system to the controller.
@@ -260,29 +281,33 @@ class ControllableGrabEnvironment(FetchableRodObjectsEnvironment,
         ))
 
         rod_compact_velocity = self.shearable_rod.velocity_collection[..., -1]
-        rod_compact_velocity_norm = np.array(
-            [np.linalg.norm(rod_compact_velocity)])
+        rod_compact_velocity_norm = np.array([
+            np.linalg.norm(rod_compact_velocity)
+        ])
         rod_compact_velocity_dir = np.where(
             rod_compact_velocity_norm != 0,
-            rod_compact_velocity/rod_compact_velocity_norm,
+            rod_compact_velocity / rod_compact_velocity_norm,
             0.0,
         )
 
         sphere_compact_state = self.target_point.flatten()  # 2
         sphere_compact_velocity = np.array([0, 0, 0])
-        sphere_compact_velocity_norm = np.array(
-            [np.linalg.norm(sphere_compact_velocity)])
+        sphere_compact_velocity_norm = np.array([
+            np.linalg.norm(sphere_compact_velocity)
+        ])
         sphere_compact_velocity_dir = np.where(
             sphere_compact_velocity_norm != 0,
-            sphere_compact_velocity/sphere_compact_velocity_norm,
+            sphere_compact_velocity / sphere_compact_velocity_norm,
             0.0,
         )
         rotate_matrix = compute_rotation_matrix(self.target_angle)
         self.target_tip_orientation = compute_quaternion_from_matrix(
-            rotate_matrix)
+            rotate_matrix
+        )
         rotate_matrix = self.shearable_rod.director_collection[..., -1]
         self.rod_tip_orientation = compute_quaternion_from_matrix(
-            rotate_matrix)
+            rotate_matrix
+        )
 
         state = np.concatenate((
             # rod information
@@ -304,15 +329,14 @@ class ControllableGrabEnvironment(FetchableRodObjectsEnvironment,
         # action contains the control points for actuation torques in different directions in range [-1, 1]
         self.action = action
 
-        self.spline_points_func_array_normal_dir[:] = action[
-            :self.number_of_control_points
-        ]
+        self.spline_points_func_array_normal_dir[:
+                                                 ] = action[:self.
+                                                            number_of_control_points
+                                                            ]
         self.spline_points_func_array_binormal_dir[:] = action[
-            self.number_of_control_points:2 * self.number_of_control_points
-        ]
+            self.number_of_control_points:2 * self.number_of_control_points]
         self.spline_points_func_array_twist_dir[:] = action[
-            2 * self.number_of_control_points:
-        ]
+            2 * self.number_of_control_points:]
 
         self.current_step += 1
 
@@ -324,8 +348,7 @@ class ControllableGrabEnvironment(FetchableRodObjectsEnvironment,
         state = self.get_state()
 
         dist = np.linalg.norm(
-            self.shearable_rod.position_collection[..., -1]
-            - self.target_point
+            self.shearable_rod.position_collection[..., -1] - self.target_point
         )
         """ Reward Engineering """
         reward_dist = -np.square(dist).sum()
@@ -336,13 +359,14 @@ class ControllableGrabEnvironment(FetchableRodObjectsEnvironment,
         # )
         # orientation_penalty = -((orientation_dist) ** 2)
 
-        reward = 1.0 * reward_dist # + 0.5 * orientation_penalty
-
+        reward = 1.0 * reward_dist  # + 0.5 * orientation_penalty
         """ Done is a boolean to reset the environment before episode is completed """
         done = False
 
         # Position of the rod cannot be NaN, it is not valid, stop the simulation
-        invalid_values_condition = isnan_check(self.shearable_rod.position_collection)
+        invalid_values_condition = isnan_check(
+            self.shearable_rod.position_collection
+        )
 
         if invalid_values_condition == True:
             print(" Nan detected in the position, exiting simulation now")
@@ -389,7 +413,7 @@ class ControllableGrabEnvironment(FetchableRodObjectsEnvironment,
         """
 
         distance = np.linalg.norm(
-            self.shearable_rod.position_collection[:,-1] - self.target_point
+            self.shearable_rod.position_collection[:, -1] - self.target_point
         )
         # print(distance)
         return distance < eps
