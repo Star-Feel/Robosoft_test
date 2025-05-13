@@ -5,23 +5,23 @@ import numpy as np
 import os.path as osp
 import random
 
-sys.path.append("/data/wjs/SoftRoboticaSimulator")
 from tqdm import tqdm
 from ssim.utils import load_yaml, save_yaml, save_json
 
-Gen_data_Num = 2
+Gen_data_Num = 10
 
-RANDOM_DIR = "/data/wjs/SoftRoboticaSimulator/work_dirs/rod_control_data/random_go"
-OBSTACLE_DIR = "/data/wjs/SoftRoboticaSimulator/work_dirs/rod_control_data/obstacle"
-# TARGET_OBJECT_DIR = "./work_dirs/rod_control_data/target"
-TARGET_DIR = "/data/wjs/SoftRoboticaSimulator/work_dirs/rod_control_data/full"
+RANDOM_DIR = "./work_dirs/rod_control_data/random_go"
+OBSTACLE_DIR = "./work_dirs/rod_control_data/obstacle"
+TARGET_OBJECT_DIR = "./work_dirs/rod_control_data/target"
+TARGET_DIR = "./work_dirs/rod_control_data/full"
 
 info_temp = {
     "id": 0,
     "config": "",
     "state_action": "",
     "visual": "",
-    "target_id": 3,
+    "object_id": -1,
+    "target_id": -1,
     "description": "Navigation to the green sphere",
 }
 
@@ -57,40 +57,31 @@ def get_description():
     description = description.replace("<area>", f"{area_color} area")
     return description, obj_color, area_color, shape
 
+
 def main():
     for i in tqdm(range(Gen_data_Num)):
         local_random_dir = osp.join(RANDOM_DIR, f"{i}")
-        local_obstacle_dir = osp.join(OBSTACLE_DIR, f"{i}")
-        # local_target_object_dir = osp.join(TARGET_OBJECT_DIR, f"{i}")
+        # local_obstacle_dir = osp.join(OBSTACLE_DIR, f"{i}")
+        local_target_object_dir = osp.join(TARGET_OBJECT_DIR, f"{i}")
         local_target_dir = osp.join(TARGET_DIR, f"{i}")
         os.makedirs(local_target_dir, exist_ok=True)
 
-        # config = load_yaml(osp.join(local_target_object_dir, "config.yaml"))
-        desciprtion, obj_color, area_color, shape = get_description()
-        config = load_yaml(osp.join(local_random_dir, "config.yaml"))
-        obj_spheres = config["objects"]
+        config = load_yaml(osp.join(local_target_object_dir, "config.yaml"))
+        spheres = config["objects"]
 
-        # obj
-        obj_spheres[0]['color'] = obj_color
-        obj_spheres[0]['type'] = shape
+        desciprtion, obj_color, tgt_color, obj_shape = get_description()
 
-        # target
-        obj_spheres[1]['color'] = area_color
-        # spheres[1]['type'] = shape
-
-        obstacle_config = load_yaml(osp.join(local_obstacle_dir, "config.yaml"))
-        obstacle_spheres = obstacle_config["objects"]
-
-        for obstacle in obstacle_spheres:
-            _, obj_color, _, shape = get_description()
-            obstacle['color'] = obj_color
+        for idx, obstacle in enumerate(spheres):
+            _, color, _, shape = get_description()
+            if obstacle.get("mark", None) == "object":
+                color = obj_color
+                shape = obj_shape
+                object_id = idx
+            elif obstacle.get("mark", None) == "target":
+                color = tgt_color
+                target_id = idx
+            obstacle['color'] = color
             obstacle['type'] = shape
-
-        spheres = obj_spheres + obstacle_spheres
-        random.shuffle(spheres)
-
-        target_id = spheres.index(obj_spheres[1])
-        
         config["objects"] = spheres
         save_yaml(config, osp.join(local_target_dir, "config.yaml"))
 
@@ -98,6 +89,7 @@ def main():
         info["id"] = i
         info["config"] = osp.join(local_target_dir, "config.yaml")
         info["state_action"] = osp.join(local_random_dir, "state_action.pkl")
+        info["object_id"] = object_id
         info["target_id"] = target_id
         info["description"] = desciprtion
 
@@ -107,7 +99,6 @@ def main():
             indent=4,
             sort_keys=False,
         )
-        break
 
 
 if __name__ == "__main__":

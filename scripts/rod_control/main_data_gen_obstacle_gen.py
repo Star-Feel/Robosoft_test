@@ -1,23 +1,23 @@
 import os
-import sys
 import numpy as np
 import os.path as osp
 import pickle
 
-sys.path.append("/data/wjs/SoftRoboticaSimulator")
 from tqdm import tqdm
 from ssim.visualize.visualizer import plot_contour, plot_contour_with_spheres
 from ssim.utils import load_yaml, save_yaml
 
-Gen_data_Num = 2
+Gen_data_Num = 10
 
-SOURCE_DIR = "/data/wjs/SoftRoboticaSimulator/work_dirs/rod_control_data/random_go"
-TARGET_DIR = "/data/wjs/SoftRoboticaSimulator/work_dirs/rod_control_data/obstacle"
+SOURCE_DIR = "./work_dirs/rod_control_data/random_go"
+TARGET_DIR = "./work_dirs/rod_control_data/obstacle"
 
 
-def get_random_sphere(minx: float, maxx: float, miny: float, maxy: float,
-                      minz: float, maxz: float) -> tuple:
-    radius = np.random.uniform(0, 0.1)    
+def get_random_sphere(
+    minx: float, maxx: float, miny: float, maxy: float, minz: float,
+    maxz: float
+) -> tuple:
+    radius = np.random.uniform(0, 0.1)
     x = np.random.uniform(minx + radius, maxx - radius)
     y = np.random.uniform(miny + radius, maxy - radius)
     z = np.random.uniform(minz + radius, maxz - radius)
@@ -44,10 +44,12 @@ def check_collision_with_spheres(sphere: tuple, spheres: list) -> bool:
     return False
 
 
-def gen_obstacles(positions: np.array,
-                  num_obstacles: int = 5,
-                  num_policy: str = "random",
-                  margin: float = 0.5) -> list:
+def gen_obstacles(
+    positions: np.array,
+    num_obstacles: int = 5,
+    num_policy: str = "random",
+    margin: float = 0.5
+) -> list:
 
     if num_policy == "random":
         num_obstacles = np.random.randint(1, num_obstacles + 1)
@@ -59,10 +61,12 @@ def gen_obstacles(positions: np.array,
     obstacles = []
     for _ in range(num_obstacles):
         while True:
-            obstacle = get_random_sphere(min_x, max_x, min_y, max_y, min_z, max_z)
+            obstacle = get_random_sphere(
+                min_x, max_x, min_y, max_y, min_z, max_z
+            )
             if not check_collision_with_positions(
-                    obstacle, positions) and not check_collision_with_spheres(
-                        obstacle, obstacles):
+                obstacle, positions
+            ) and not check_collision_with_spheres(obstacle, obstacles):
                 break
         obstacles.append(obstacle)
     return obstacles
@@ -77,7 +81,7 @@ def main():
             state_action = pickle.load(f)
 
         positions = np.array(state_action["rod_position"])
-        flattened_positions = positions[::1000].transpose(0, 2,
+        flattened_positions = positions.transpose(0, 2,
                                                           1).reshape(-1, 3)
         obstacles = gen_obstacles(flattened_positions, num_policy="random")
 

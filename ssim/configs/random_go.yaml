@@ -27,7 +27,7 @@ rod:
 
 # Simulator configuration
 simulator:
-  final_time: 2.0
+  final_time: 5.0
   time_step: 2.0e-4
   collect_data: true
   rendering_fps: 60
