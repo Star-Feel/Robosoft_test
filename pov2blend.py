@@ -51,8 +51,9 @@ class BlenderRenderer:
         scene.view_settings.view_transform = 'Filmic'             # 窗口显示时，使用Filmic颜色变换
         scene.sequencer_colorspace_settings.name = 'Filmic sRGB'  # 保存图片时使用 Filmmic + sRGB
         scene.render.film_transparent = False                     # 背景不透明（纯色或者环境光贴图）
-        scene.render.resolution_percentage = 25
-        scene.eevee.taa_render_samples = 8
+        # scene.render.resolution = 1920
+        scene.render.resolution_percentage = 20
+        scene.eevee.taa_render_samples = 4
         scene.eevee.taa_samples = 0
         scene.eevee.gi_diffuse_bounces = 0
 
@@ -146,6 +147,7 @@ class BlenderRenderer:
             assets_path  = "/data/wjs/wrp/SoftRoboticaSimulator/assets"
             obj_list = os.listdir(assets_path)
             obj_chosen = random.choice(obj_list)
+            # obj_chosen = "Ottoman"
             file_list = os.listdir(os.path.join(assets_path, obj_chosen))
             for file in file_list:
                 if file.endswith('.obj'):

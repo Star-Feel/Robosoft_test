@@ -43,9 +43,9 @@ def main():
     # env.visualize_3d_povray(video_name=f'povray_{dir_name}',
     #                         output_images_dir=f'./work_dirs/povray_{dir_name}',
     #                         fps=20)
-    env.visualize_3d_blender(video_name=f'povray_{dir_name}',
-                        output_images_dir=f'./work_dirs/povray_{dir_name}',
-                        fps=20)
+    env.visualize_3d_blender(video_name=f'povray_{dir_name}_test',
+                        output_images_dir=f'./work_dir/povray_{dir_name}',
+                        fps=15)
     return success
 
 
