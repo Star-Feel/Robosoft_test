@@ -26,7 +26,8 @@ from ..components import MeshSurface, RigidBodyCallBack, RodCallBack
 from ..components.callback import MeshSurfaceCallBack
 from ..visualize.renderer import POVRayRenderer
 from ..visualize.visualizer import rod_objects_3d_visualize
-
+from pov2blend import BlenderRenderer
+import os
 
 class BaseSimulator(BaseSystemCollection, Constraints, Connections, Forcing,
                     Damping, Contact, CallBacks):
@@ -527,3 +528,64 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
             # print("Render time per render step: ", end - start)
         renderer.process_povray(multi_processing=True)
         renderer.create_video()
+
+    def visualize_3d_blender(
+        self,
+        video_name,
+        output_images_dir,
+        fps,
+        width=960,
+        height=540, 
+    ):
+        top_view_dir = os.path.join(output_images_dir, "top")
+        blender_renderer = BlenderRenderer(top_view_dir)
+
+        renderer = POVRayRenderer(
+            output_filename=video_name,
+            output_images_dir=output_images_dir,
+            fps=fps,
+            width=width,
+            height=height,
+        )
+        frames = len(self.rod_callback['time'])
+        for i in tqdm(range(frames), disable=False, desc="Rendering .povray"):
+            renderer.reset_stage()
+            for object_ in self.objects:
+                id_ = self.object2id[object_]
+                object_callback = self.object_callbacks[id_]
+                if isinstance(object_, ea.Sphere):
+                    renderer.add_stage_object(
+                        object_type='sphere',
+                        name=f'sphere{id_}',
+                        position=np.squeeze(object_callback['position'][i]),
+                        radius=np.squeeze(object_callback['radius'][i]),
+                    )
+                elif isinstance(object_, MeshSurface):
+                    renderer.add_stage_object(
+                        object_type='mesh',
+                        name=f'mesh{id_}',
+                        mesh_name='cube_mesh',
+                        position=np.squeeze(object_callback['position'][i]),
+                        scale=1,  # TODO
+                        matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
+                    )
+            renderer.render_single_step(
+                data={
+                    "rod_position": self.rod_callback["position"][i],
+                    "rod_radius": self.rod_callback["radius"][i],
+                },
+                save_img=False,
+            )
+        
+        blender_renderer.batch_rendering(top_view_dir, top_view_dir)
+        renderer.create_video(only_top=True)
+
+
+class RodObjectsEnvironment(SimulateMixin, RodObjectsMixin, ABC):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @abstractmethod
+    def setup(self):
+        pass

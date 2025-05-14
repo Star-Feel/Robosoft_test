@@ -174,8 +174,19 @@ class POVRayRenderer:
                 if bar:
                     pbar.update()
 
-    def create_video(self):
+    def create_video(self, only_top=False):
         _stage_scripts = self._stages.generate_scripts()
+        if only_top:
+            view_name = "top"
+            imageset_path = os.path.join(self._output_images_dir, view_name)
+
+            filename = self._ouput_filename + "_" + view_name + ".mp4"
+
+            os.system(
+                f"ffmpeg -r {self._fps} -i {imageset_path}/frame_%05d.png videos/{filename}"
+            )
+            return 
+
         for view_name in _stage_scripts.keys():
             imageset_path = os.path.join(self._output_images_dir, view_name)
 

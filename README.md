@@ -21,7 +21,30 @@ elastica/mesh/mesh_initializer.py 第92行，修改为
 ```python
 self.face_normals = self.face_normal_calculation(self.mesh.face_normals.astype(np.float64))
 ```
+### POVRay
+```shell
+wget https://github.com/POV-Ray/povray/archive/refs/tags/v3.7.0.10.zip
+unzip povray-3.7.0.10.zip
+cd povray-3.7.0.10/unix
 
+sudo apt-get update
+sudo apt-get install -y autoconf automake build-essential cmake libboost-all-dev libpng-dev libjpeg-dev libtiff-dev libopenexr-dev libsdl1.2-dev
+
+./prebuild.sh
+cd ..
+./configure COMPILED_BY="Your name <your email@address>" --with-x
+sudo make install
+```
+### ffmpeg
+```shell
+sudo apt-get update
+sudo apt-get install -y build-essential git yasm nasm libx264-dev libx265-dev libvpx-dev libfdk-aac-dev libmp3lame-dev libopus-dev
+wget https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n7.1.1.zip
+unzip FFmpeg-n7.1.1.zip
+cd FFmpeg-n7.1.1
+./configure --enable-ffplay --enable-ffserver
+make;make install
+```
 ## grab ball
 
 <div style="text-align: center;">
