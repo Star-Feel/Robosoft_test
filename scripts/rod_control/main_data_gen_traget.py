@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from ssim.utils import load_yaml, save_yaml
 
-N = 10
+N = 100
 
 RANDOM_DIR = "./work_dirs/rod_control_data/random_go"
 OBSTACLE_DIR = "./work_dirs/rod_control_data/obstacle"
@@ -46,7 +46,7 @@ def main():
         with open(osp.join(local_random_dir, "state_action.pkl"), "rb") as f:
             state_action = pickle.load(f)
 
-        positions = state_action["rod_position"]
+        positions = state_action["rod_position"].transpose(0, 2, 1)
         process_steps = state_action["process_steps"]
         time_shots = state_action["time_shots"]
         # Find the index of a specific element in the np.ndarray
@@ -54,13 +54,11 @@ def main():
         place = np.argwhere(process_steps == time_shots[1])
         place = place[0][0] if place.size > 0 else -1
 
-        pick_position = positions.transpose(0, 2, 1)[pick, -1, :]
-        pick_direction = positions.transpose(0, 2, 1)[
-            pick, -1, :] - positions.transpose(0, 2, 1)[pick, -2, :]
+        pick_position = positions[pick, -1, :]
+        pick_direction = positions[pick, -1, :] - positions[pick, -2, :]
         pick_direction = pick_direction / np.linalg.norm(pick_direction)
-        place_position = positions.transpose(0, 2, 1)[place, -1, :]
-        place_direction = positions.transpose(0, 2, 1)[
-            place, -1, :] - positions.transpose(0, 2, 1)[place, -2, :]
+        place_position = positions[place, -1, :]
+        place_direction = positions[place, -1, :] - positions[place, -2, :]
         place_direction = place_direction / np.linalg.norm(place_direction)
         object_radius, object_center = get_object(
             pick_position, pick_direction, (0, 0.1)

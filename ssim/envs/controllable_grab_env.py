@@ -4,6 +4,7 @@ __all__ = [
 ]
 
 from collections import defaultdict
+import copy
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -254,7 +255,7 @@ class ControllableGrabEnvironment(
         position = self.shearable_rod.position_collection
         velocity = self.shearable_rod.velocity_collection
 
-        return position, velocity
+        return copy.deepcopy(position), copy.deepcopy(velocity)
 
     def get_state(self):
         """

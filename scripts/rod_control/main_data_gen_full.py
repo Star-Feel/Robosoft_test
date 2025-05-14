@@ -8,7 +8,7 @@ import random
 from tqdm import tqdm
 from ssim.utils import load_yaml, save_yaml, save_json
 
-Gen_data_Num = 10
+Gen_data_Num = 100
 
 RANDOM_DIR = "./work_dirs/rod_control_data/random_go"
 OBSTACLE_DIR = "./work_dirs/rod_control_data/obstacle"
@@ -81,7 +81,7 @@ def main():
                 color = tgt_color
                 target_id = idx
             obstacle['color'] = color
-            obstacle['type'] = shape
+            obstacle['shape'] = shape
         config["objects"] = spheres
         save_yaml(config, osp.join(local_target_dir, "config.yaml"))
 
