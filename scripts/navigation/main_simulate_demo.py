@@ -1,21 +1,28 @@
 import sys
 import numpy as np
+import os
 import os.path as osp
 import pickle
 
-sys.path.append("/data/zyw/workshop/attempt")
+# sys.path.append("/data/zyw/workshop/attempt")
+sys.path.append("/data/wjs/wrp/SoftRoboticaSimulator")
 
 from ssim.utils import load_json
 
-sys.path.append("/data/zyw/workshop/attempt")
 from tqdm import tqdm
 from ssim.envs import NavigationSnakeTorqueEnvironment, NavigationSnakeArguments
 
 
 def main():
-    data_path = "/data/zyw/workshop/attempt/work_dirs/navigation_data/full/0/info.json"
-    work_dir = "/data/zyw/workshop/attempt/work_dirs/navigation_demo"
+    # data_path = "/data/zyw/workshop/attempt/work_dirs/navigation_data/full/0/info.json"
+    # work_dir = "/data/zyw/workshop/attempt/work_dirs/navigation_demo"
+    os.chdir("/data/wjs/wrp/SoftRoboticaSimulator")
+    data_path = "/data/wjs/wrp/SoftRoboticaSimulator/test/full/0/info.json"
+    work_dir = "/data/wjs/wrp/SoftRoboticaSimulator/test"
     info = load_json(data_path)
+
+    info['config'] = info['config'].replace('./', '/data/zyw/workshop/attempt/')
+    info['state_action'] = info['state_action'].replace('./', '/data/zyw/workshop/attempt/')
 
     config = NavigationSnakeArguments.from_yaml(info["config"])
     env = NavigationSnakeTorqueEnvironment(config)
@@ -25,6 +32,7 @@ def main():
     with open(info["state_action"], "rb") as f:
         state_action = pickle.load(f)
     actions = state_action["torque"]
+
     try:
         for i, action in tqdm(enumerate(actions), total=len(actions)):
             env.step(action)
@@ -37,12 +45,23 @@ def main():
         pass
         # if env.reach():
         #     break
-    env.visualize_2d(osp.join(work_dir, "demo.mp4"),
-                     equal_aspect=True,
-                     target_last=True)
-    env.visualize_3d_povray(video_name=osp.join(work_dir, "demo_povray"),
-                            output_images_dir=osp.join(work_dir, "povray"),
-                            fps=env.rendering_fps)
+        
+    # env.visualize_2d(osp.join(work_dir, "demo.mp4"),
+    #                  equal_aspect=True,
+    #                  target_last=True)
+
+    # env.visualize_3d_povray(video_name=osp.join(work_dir, "demo_povray"),
+    #                         output_images_dir=osp.join(work_dir, "povray"),
+    #                         fps=env.rendering_fps)
+    
+    env.visualize_3d_blender(
+        video_name='test',
+        output_images_dir=osp.join(work_dir,'test/povray_test'),
+        fps=15,
+        width=480,
+        height=360,
+    )
+    
 
 
 if __name__ == "__main__":

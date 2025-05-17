@@ -43,7 +43,7 @@ class POVRayRenderer:
 
         self.reset_stage(top_camera_position, top_camera_look_at)
 
-    def reset_stage(self, top_camera_position, top_camera_look_at):
+    def reset_stage(self, top_camera_position=[0, 10, 2], top_camera_look_at=[0, 0, 2]):
         stages = Stages()
         stages.add_camera(
             # Add first-person viewpoint

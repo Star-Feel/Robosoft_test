@@ -581,11 +581,11 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
         renderer.create_video(only_top=True)
 
 
-class RodObjectsEnvironment(SimulateMixin, RodObjectsMixin, ABC):
+# class RodObjectsEnvironment(SimulateMixin, RodObjectsMixin, ABC):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
 
-    @abstractmethod
-    def setup(self):
-        pass
+#     @abstractmethod
+#     def setup(self):
+#         pass
