@@ -1,14 +1,12 @@
 import os
-import sys
-from turtle import pos
-import numpy as np
 import os.path as osp
 import pickle
 
-sys.path.append("/data/zyw/workshop/attempt")
+import numpy as np
 from tqdm import tqdm
-from ssim.visualize.visualizer import plot_contour, plot_contour_with_spheres
-from ssim.utils import load_yaml, save_yaml, save_json, load_json
+
+from ssim.utils import load_yaml, save_yaml
+from ssim.visualize.visualizer import plot_contour_with_spheres
 
 N = 100
 
@@ -30,7 +28,7 @@ def gen_target(positions: np.array, scope: float = 0.3):
 def main():
     for i in tqdm(range(N)):
         local_random_dir = osp.join(RANDOM_DIR, f"{i}")
-        local_obstacle_dir = osp.join(OBSTACLE_DIR, f"{i}")
+        # local_obstacle_dir = osp.join(OBSTACLE_DIR, f"{i}")
         local_target_dir = osp.join(TARGET_DIR, f"{i}")
         os.makedirs(local_target_dir, exist_ok=True)
 
@@ -43,14 +41,15 @@ def main():
         target = gen_target(tip_positions, 0.3)
 
         # export obstacles configs
-        base_config = load_yaml(osp.join(local_obstacle_dir, "config.yaml"))
-        spheres = base_config["objects"]
+        base_config = load_yaml(osp.join(local_random_dir, "config.yaml"))
+        spheres = []  # base_config["objects"]
         spheres.append({
             "type": "sphere",
             "center": [target[0], target[1], target[2]],
             "radius": float(target[3]),
             "density": 1.0
         })
+        base_config["objects"] = spheres
         save_yaml(base_config, osp.join(local_target_dir, "config.yaml"))
 
         # visualize

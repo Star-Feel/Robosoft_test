@@ -1,13 +1,11 @@
 import copy
 import os
-import sys
-import numpy as np
 import os.path as osp
 
-sys.path.append("/data/zyw/workshop/attempt")
+import numpy as np
 from tqdm import tqdm
-from ssim.visualize.visualizer import plot_contour, plot_contour_with_spheres
-from ssim.utils import load_yaml, save_yaml, save_json, load_json
+
+from ssim.utils import load_yaml, save_json, save_yaml
 
 N = 100
 
@@ -27,11 +25,15 @@ info_temp = {
 desciprtions = [
     "You need to go through the obstacles to find the <object>.",
     "Navigation to the <object>.",
-    "Please locate and reach the target: <object>, and pay attention to obstacles along the way.",
-    "Navigate to: <object>, ensuring you avoid all obstacles to arrive safely.",
+    "Please locate and reach the target: <object>,"
+    "and pay attention to obstacles along the way.",
+    "Navigate to: <object>, ensuring you avoid "
+    "all obstacles to arrive safely.",
     "Your task is to traverse obstacles and successfully locate: <object>.",
-    "Explore the environment and find: <object>, remember to carefully cross any potential obstacles.",
-    "Please guide to: <object>, stay alert during the journey and proceed safely.",
+    "Explore the environment and find: <object>, "
+    "remember to carefully cross any potential obstacles.",
+    "Please guide to: <object>, stay alert "
+    "during the journey and proceed safely.",
 ]
 colors = [
     "Red", "Blue", "Green", "Yellow", "Purple", "Orange", "Pink", "Brown",
@@ -57,13 +59,24 @@ def get_description():
 def main():
     for i in tqdm(range(N)):
         local_random_dir = osp.join(RANDOM_DIR, f"{i}")
+        local_obstacle_dir = osp.join(OBSTACLE_DIR, f"{i}")
         local_target_object_dir = osp.join(TARGET_OBJECT_DIR, f"{i}")
         local_target_dir = osp.join(TARGET_DIR, f"{i}")
         os.makedirs(local_target_dir, exist_ok=True)
 
         desciprtion, color, shape = get_description()
-        config = load_yaml(osp.join(local_target_object_dir, "config.yaml"))
-        spheres = config["objects"]
+        obstacle_config = load_yaml(
+            osp.join(local_obstacle_dir, "config.yaml")
+        )
+        target_config = load_yaml(
+            osp.join(local_target_object_dir, "config.yaml")
+        )
+
+        assert len(
+            target_config["objects"]
+        ) == 1, "target config should only have one object"
+        spheres = obstacle_config["objects"]
+        spheres.extend(target_config["objects"])
         for sphere in spheres:
             if "density" not in sphere:
                 sphere["density"] = 1.0
@@ -72,7 +85,8 @@ def main():
         target_id = len(spheres) - 1
         spheres[-1]["color"] = color
         spheres[-1]["shape"] = shape
-        save_yaml(config, osp.join(local_target_dir, "config.yaml"))
+        target_config["objects"] = spheres
+        save_yaml(target_config, osp.join(local_target_dir, "config.yaml"))
 
         info = copy.deepcopy(info_temp)
         info["id"] = i
