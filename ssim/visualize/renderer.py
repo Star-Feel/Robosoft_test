@@ -21,8 +21,8 @@ class POVRayRenderer:
             "ssim/visualize/povray/includes/default.inc",
             "ssim/visualize/povray/includes/meshes.inc"
         ],
-        top_camera_position=[0, 10, 2],
-        top_camera_look_at=[0, 0, 2],
+        top_camera_position=[-2, 10, 2],
+        top_camera_look_at=[-2, 0, 2],
     ):
         self._ouput_filename = output_filename
         self._output_images_dir = output_images_dir

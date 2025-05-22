@@ -28,6 +28,7 @@ from ..visualize.renderer import POVRayRenderer
 from ..visualize.visualizer import rod_objects_3d_visualize
 from pov2blend import BlenderRenderer
 import os
+import bpy
 
 class BaseSimulator(BaseSystemCollection, Constraints, Connections, Forcing,
                     Damping, Contact, CallBacks):

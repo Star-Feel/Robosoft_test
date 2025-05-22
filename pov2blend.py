@@ -6,6 +6,7 @@ import time
 import tqdm
 import random
 import mathutils
+import itertools
 
 class BlenderRenderer:
     def __init__(self, output_dir="renders"):
@@ -30,7 +31,7 @@ class BlenderRenderer:
         world.use_nodes = True
         bg_node = world.node_tree.nodes.get('Background')
         if bg_node:
-            bg_node.inputs['Color'].default_value = (0.2, 0.2, 0.2, 1.0)  # RGBA
+            bg_node.inputs['Color'].default_value = (1.0, 1.0, 1.0, 1.0)  # RGBA
 
         # 创建顶部环境灯光
         bpy.ops.object.light_add(type='AREA', location=(0, 0, 10))
@@ -39,6 +40,13 @@ class BlenderRenderer:
         top_light.data.energy = 300
         top_light.data.size = 15  # 大面积光源
         top_light.data.color = (1.0, 1.0, 1.0)  # 纯白色
+
+        bpy.ops.object.light_add(type='SPOT', location=(0, -2, 10), rotation=(math.radians(30), 0, 0))
+        spot_light = bpy.context.object
+        spot_light.name = "SpotLight"
+        spot_light.data.energy = 5000  # 增加能量
+        spot_light.data.spot_size = math.radians(60)  # 聚光灯的角度
+        spot_light.data.spot_blend = 0.15  # 聚光灯的边缘柔和度
         
         # scene settings
         scene = bpy.context.scene
@@ -51,9 +59,10 @@ class BlenderRenderer:
         scene.view_settings.view_transform = 'Filmic'             # 窗口显示时，使用Filmic颜色变换
         scene.sequencer_colorspace_settings.name = 'Filmic sRGB'  # 保存图片时使用 Filmmic + sRGB
         scene.render.film_transparent = False                     # 背景不透明（纯色或者环境光贴图）
-        # scene.render.resolution = 1920
-        scene.render.resolution_percentage = 20
-        scene.eevee.taa_render_samples = 4
+        scene.render.resolution_x = 1920
+        scene.render.resolution_y = 1280
+        # scene.render.resolution_percentage = 40
+        scene.eevee.taa_render_samples = 2
         scene.eevee.taa_samples = 0
         scene.eevee.gi_diffuse_bounces = 0
 
@@ -143,50 +152,145 @@ class BlenderRenderer:
 
     def load_obj(self, obj_path=None):
         # obj_path == None, then load obj randomly
+        sphere_matchs = re.findall(r'sphere\s*{([^}]*)}', self.pov_content, re.DOTALL)
+        mesh_matchs = re.findall(r'object\s*\{\s*cube_mesh[^}]*\}', self.pov_content, re.DOTALL)
+
         if obj_path is None:
-            assets_path  = "/data/wjs/wrp/SoftRoboticaSimulator/assets"
+            # assets_path  = "/data/wjs/wrp/SoftRoboticaSimulator/assets"
+            assets_path  = "/data/wjs/wrp/SoftRoboticaSimulator/scene_assets/living_room"
             obj_list = os.listdir(assets_path)
-            obj_chosen = random.choice(obj_list)
-            # obj_chosen = "Ottoman"
-            file_list = os.listdir(os.path.join(assets_path, obj_chosen))
-            for file in file_list:
-                if file.endswith('.obj'):
-                    obj_path = os.path.join(assets_path, obj_chosen, file)
-                    break
 
-        bpy.ops.wm.obj_import(filepath=obj_path)
+            sphere_list = itertools.cycle(["soccer", "basketball"])
+            for idx in range(len(sphere_matchs)):
+                # obj_chosen = random.choice(obj_list)
+                obj_chosen = next(sphere_list)
+                file_list = os.listdir(os.path.join(assets_path, obj_chosen))
+                for file in file_list:
+                    if file.endswith('.obj'):
+                        obj_path = os.path.join(assets_path, obj_chosen, file)
+                        bpy.ops.wm.obj_import(filepath=obj_path)
+                        for idx, obj in enumerate(bpy.context.selected_objects):
+                            if idx == 0:
+                                continue
+                            else:
+                                bpy.data.objects.remove(obj, do_unlink=True)
+                        break
+
+            obj_list = itertools.cycle([x for x in obj_list if x not in ["soccer", "basketball"]])
+            for idx in range(len(mesh_matchs)):
+                # obj_chosen = random.choice(obj_list)
+                
+                obj_chosen = next(obj_list)
+
+                # obj_chosen = "Tea_Cup"
+                file_list = os.listdir(os.path.join(assets_path, obj_chosen))
+                for file in file_list:
+                    if file.endswith('.obj'):
+                        obj_path = os.path.join(assets_path, obj_chosen, file)
+                        bpy.ops.wm.obj_import(filepath=obj_path)
+                        for idx, obj in enumerate(bpy.context.selected_objects):
+                            if idx == 0:
+                                continue
+                            else:
+                                bpy.data.objects.remove(obj, do_unlink=True)
+                        break
+
+            bpy.ops.object.select_all(action='SELECT')
+                
+
+        # bpy.ops.wm.obj_import(filepath=obj_path)
         # 放置在球体对应位置，并设置材质
-        sphere_match = re.findall(r'sphere\s*{([^}]*)}', self.pov_content, re.DOTALL)[0]
-        sphere_data_match = re.search(r'<([^>]*)>\s*,\s*([0-9.]+)', sphere_match)
-        if sphere_data_match:
-            pos = map(float, sphere_data_match.group(1).split(','))
-            pos = self.coord_pov2blend(*pos)
-            radius = float(sphere_data_match.group(2))
+        # sphere_matchs = re.findall(r'sphere\s*{([^}]*)}', self.pov_content, re.DOTALL)[0]
+        # sphere_matchs = re.findall(r'sphere\s*{([^}]*)}', self.pov_content, re.DOTALL)
+        
+        # sphere_assets_path  = "/data/wjs/wrp/SoftRoboticaSimulator/assets"
+        # sphere_obj_list = os.listdir(sphere_assets_path)
+        # obj_chosen = random.choice(sphere_obj_list)
+        # file_list = os.listdir(os.path.join(sphere_assets_path, obj_chosen))
 
-            obj = bpy.context.selected_objects[0]
-            obj.location = tuple(pos)
-            obj.rotation_euler = (math.radians(90), 0, math.radians(90))
-            # 如何将物体限制在球体内？
+        for idx, sphere_match in enumerate(sphere_matchs):
+            sphere_data_match = re.search(r'<([^>]*)>\s*,\s*([0-9.]+)', sphere_match)
+            
+            if sphere_data_match:
+                pos = map(float, sphere_data_match.group(1).split(','))
+                pos = self.coord_pov2blend(*pos)
+                radius = float(sphere_data_match.group(2))
 
-            # 计算物体边界盒的对角线长度（作为"直径"）
-            local_bbox_corners = [mathutils.Vector(corner) for corner in obj.bound_box]
-            max_dimension = max(
-                (local_bbox_corners[0] - local_bbox_corners[6]).length,
-                (local_bbox_corners[1] - local_bbox_corners[7]).length,
-                (local_bbox_corners[2] - local_bbox_corners[4]).length
-            )
+                obj = bpy.context.selected_objects[idx + 4]
+                obj.location = tuple(pos)
+                obj.rotation_euler = (math.radians(90), 0, math.radians(90))
+                # 如何将物体限制在球体内？
+
+                # 计算物体边界盒的对角线长度（作为"直径"）
+                local_bbox_corners = [mathutils.Vector(corner) for corner in obj.bound_box]
+                max_dimension = max(
+                    (local_bbox_corners[0] - local_bbox_corners[6]).length,
+                    (local_bbox_corners[1] - local_bbox_corners[7]).length,
+                    (local_bbox_corners[2] - local_bbox_corners[4]).length
+                )
+                
+                # 计算需要的缩放系数来使物体恰好适合球体
+                # 使用直径的一半（半径）与球体半径比较
+                scale_factor = (radius * 2) / max_dimension
+                
+                # 应用缩放（略微减小以确保不会超出）
+                # 0.95是安全系数，可以根据需要调整
+                safe_scale = scale_factor * 0.95
+                obj.scale = (safe_scale, safe_scale, safe_scale)
+                
+                # 将物体位置设回球体中心
+                obj.location = tuple(pos) 
             
-            # 计算需要的缩放系数来使物体恰好适合球体
-            # 使用直径的一半（半径）与球体半径比较
-            scale_factor = (radius * 2) / max_dimension
-            
-            # 应用缩放（略微减小以确保不会超出）
-            # 0.95是安全系数，可以根据需要调整
-            safe_scale = scale_factor * 0.95
-            obj.scale = (safe_scale, safe_scale, safe_scale)
-            
-            # 将物体位置设回球体中心
-            obj.location = tuple(pos) 
+        # mesh_matchs = re.findall(r'object\s*\{\s*cube_mesh[^}]*\}', self.pov_content, re.DOTALL)       
+        for idx, mesh_match in enumerate(mesh_matchs):
+            mesh_data_match = re.search(r'translate\s*<([^>]*)>', mesh_match)       
+            mesh_scale = re.search(r'scale\s*([0-9.]+)', mesh_match)
+            if mesh_data_match:
+                pos = map(float, mesh_data_match.group(1).split(','))
+                pos = self.coord_pov2blend(*pos)
+                scale = float(mesh_scale.group(1))
+                # scale = 0.5
+
+                obj = bpy.context.selected_objects[4 + len(sphere_matchs) + idx]
+                obj.location = tuple(pos)
+                if "Cup" in obj.name:
+                    obj.rotation_euler = (math.radians(90), 0, 0)
+                elif 'Coffee_cup_withe' in obj.name:
+                    obj.rotation_euler = (0, 0, math.radians(90))
+                elif 'Book_by_Peter_Iliev_obj' in obj.name:
+                    obj.rotation_euler = (0, math.radians(90), 0)
+                elif 'big_pillow' in obj.name:
+                    obj.rotation_euler = (0, 0, 0)
+                else:
+                    obj.rotation_euler = (math.radians(90), 0, math.radians(90))
+                # 如何将物体限制在球体内？
+
+                # 计算物体边界盒的对角线长度（作为"直径"）
+                local_bbox_corners = [mathutils.Vector(corner) for corner in obj.bound_box]
+                max_dimension = max(
+                    (local_bbox_corners[0] - local_bbox_corners[6]).length,
+                    (local_bbox_corners[1] - local_bbox_corners[7]).length,
+                    (local_bbox_corners[2] - local_bbox_corners[4]).length
+                )
+                
+                # 计算需要的缩放系数来使物体恰好适合球体
+                # 使用直径的一半（半径）与球体半径比较
+                scale_factor = (scale * 2) / max_dimension
+                
+                # 应用缩放（略微减小以确保不会超出）
+                # 0.95是安全系数，可以根据需要调整
+                safe_scale = scale_factor * 0.25
+                obj.scale = (safe_scale, safe_scale, safe_scale)
+                
+                # 将物体位置设回球体中心
+                obj.location = tuple(pos) 
+
+                if not obj.data.materials:
+                    material_name = "MyMaterial"  # 材质名称
+                    material = bpy.data.materials.new(name=material_name)
+                    # 设置材质的颜色
+                    material.diffuse_color = (1.0, 0.0, 0.0, 1.0) 
+                    obj.data.materials.append(material)
 
     def set_camera(self):
         # 设置相机

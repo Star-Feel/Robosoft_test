@@ -3,6 +3,7 @@ import numpy as np
 import os
 import os.path as osp
 import pickle
+import bpy
 
 # sys.path.append("/data/zyw/workshop/attempt")
 sys.path.append("/data/wjs/wrp/SoftRoboticaSimulator")
@@ -17,7 +18,7 @@ def main():
     # data_path = "/data/zyw/workshop/attempt/work_dirs/navigation_data/full/0/info.json"
     # work_dir = "/data/zyw/workshop/attempt/work_dirs/navigation_demo"
     os.chdir("/data/wjs/wrp/SoftRoboticaSimulator")
-    data_path = "/data/wjs/wrp/SoftRoboticaSimulator/test/full/0/info.json"
+    data_path = "/data/wjs/wrp/SoftRoboticaSimulator/test/full/1/info.json"
     work_dir = "/data/wjs/wrp/SoftRoboticaSimulator/test"
     info = load_json(data_path)
 
@@ -36,11 +37,11 @@ def main():
     try:
         for i, action in tqdm(enumerate(actions), total=len(actions)):
             env.step(action)
-            if i > 1e5:
+            if i > 1:
                 break
-            # if np.any(env.attach_flags):
-            #     print(env.attach_flags)
-            #     break
+            if np.any(env.attach_flags):
+                print(env.attach_flags)
+                break
     except:
         pass
         # if env.reach():
