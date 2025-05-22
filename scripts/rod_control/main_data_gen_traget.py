@@ -80,7 +80,7 @@ def main():
         spheres.append({
             "type": "sphere",
             "center": target_center,
-            "radius": target_radius,
+            "radius": 0.01,
             "density": 1.0,
             "mark": "target"
         })

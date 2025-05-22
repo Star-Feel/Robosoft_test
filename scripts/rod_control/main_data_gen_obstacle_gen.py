@@ -7,7 +7,7 @@ from tqdm import tqdm
 from ssim.visualize.visualizer import plot_contour, plot_contour_with_spheres
 from ssim.utils import load_yaml, save_yaml
 
-Gen_data_Num = 10
+Gen_data_Num = 100
 
 SOURCE_DIR = "./work_dirs/rod_control_data/random_go"
 TARGET_DIR = "./work_dirs/rod_control_data/obstacle"
@@ -81,9 +81,8 @@ def main():
             state_action = pickle.load(f)
 
         positions = np.array(state_action["rod_position"])
-        flattened_positions = positions.transpose(0, 2,
-                                                          1).reshape(-1, 3)
-        obstacles = gen_obstacles(flattened_positions, num_policy="random")
+        flattened_positions = positions.transpose(0, 2, 1).reshape(-1, 3)
+        obstacles = gen_obstacles(flattened_positions, num_policy="fix")
 
         # export obstacles configs
         base_config = load_yaml(osp.join(load_source_dir, "config.yaml"))
