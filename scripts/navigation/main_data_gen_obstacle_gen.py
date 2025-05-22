@@ -1,22 +1,27 @@
 import os
-import sys
-import numpy as np
 import os.path as osp
 import pickle
+from typing import Union
 
-sys.path.append("/data/zyw/workshop/attempt")
+import numpy as np
 from tqdm import tqdm
-from ssim.visualize.visualizer import plot_contour, plot_contour_with_spheres
-from ssim.utils import load_yaml, save_yaml, save_json, load_json
+
+from ssim.utils import load_yaml, save_yaml
+from ssim.visualize.visualizer import plot_contour_with_spheres
 
 N = 100
+
+N_NEAR_OBSTACLES = 8
+N_RAND_OBSTACLES = 8
 
 SOURCE_DIR = "./work_dirs/navigation_data/random_go"
 TARGET_DIR = "./work_dirs/navigation_data/obstacle"
 
 
-def get_random_sphere(minx: float, maxx: float, miny: float, maxy: float,
-                      minz: float, maxz: float) -> tuple:
+def get_random_sphere(
+    minx: float, maxx: float, miny: float, maxy: float, minz: float,
+    maxz: float
+) -> tuple:
     y = np.random.uniform(miny, maxy)
     radius = y
     x = np.random.uniform(minx + radius, maxx - radius)
@@ -25,16 +30,17 @@ def get_random_sphere(minx: float, maxx: float, miny: float, maxy: float,
 
 
 def check_intersection_by_xz(sphere1: tuple, sphere2: tuple) -> bool:
-    x1, y1, z1, r1 = sphere1
-    x2, y2, z2, r2 = sphere2
+    x1, _, z1, r1 = sphere1
+    x2, _, z2, r2 = sphere2
     distance = np.sqrt((x1 - x2)**2 + (z1 - z2)**2)
     return distance <= (r1 + r2)
 
 
-def check_collision_with_positions(sphere: tuple, positions: np.array) -> bool:
-    x, y, z, radius = sphere
+def check_collision_with_positions(sphere: tuple,
+                                   positions: np.array) -> Union[bool, float]:
+    x, _, z, radius = sphere
     distances = np.sqrt((positions[:, 0] - x)**2 + (positions[:, 2] - z)**2)
-    return np.any(distances <= radius)
+    return np.any(distances <= radius), np.min(distances - radius)
 
 
 def check_collision_with_spheres(sphere: tuple, spheres: list) -> bool:
@@ -44,11 +50,18 @@ def check_collision_with_spheres(sphere: tuple, spheres: list) -> bool:
     return False
 
 
-def gen_obstacles(positions: np.array,
-                  num_obstacles: int = 10,
-                  num_policy: str = "random",
-                  margin: float = 0.5) -> list:
-
+def gen_obstacles(
+    positions: np.array,
+    num_obstacles: int = 10,
+    num_policy: str = "random",
+    margin: float = 0.5,
+    radius_range: tuple = (0, 1),
+    near: bool = False,
+    near_threshold: float = 0.1,
+    pre_obsticles: list = None,
+) -> list:
+    if pre_obsticles is None:
+        pre_obsticles = []
     if num_policy == "random":
         num_obstacles = np.random.randint(1, num_obstacles + 1)
     minx, maxx = positions[:, 0].min() - margin, positions[:, 0].max() + margin
@@ -56,11 +69,25 @@ def gen_obstacles(positions: np.array,
     obstacles = []
     for _ in range(num_obstacles):
         while True:
-            obstacle = get_random_sphere(minx, maxx, 0, 1, minz, maxz)
-            if not check_collision_with_positions(
-                    obstacle, positions) and not check_collision_with_spheres(
-                        obstacle, obstacles):
+            obstacle = get_random_sphere(
+                minx, maxx, radius_range[0], radius_range[1], minz, maxz
+            )
+            position_collision, distance = check_collision_with_positions(
+                obstacle, positions
+            )
+            pre_obsticle_collision = check_collision_with_spheres(
+                obstacle, pre_obsticles
+            )
+            obstacle_collision = check_collision_with_spheres(
+                obstacle, obstacles
+            )
+
+            if position_collision or obstacle_collision \
+                    or pre_obsticle_collision:
+                continue
+            if (not near) or (near and distance < near_threshold):
                 break
+
         obstacles.append(obstacle)
     return obstacles
 
@@ -76,7 +103,23 @@ def main():
         positions = np.array(state_action["position"])
         flattened_positions = positions[::1000].transpose(0, 2,
                                                           1).reshape(-1, 3)
-        obstacles = gen_obstacles(flattened_positions, num_policy="random")
+        near_obstacles = gen_obstacles(
+            flattened_positions,
+            num_obstacles=N_NEAR_OBSTACLES,
+            num_policy="fix",
+            radius_range=(0.1, 0.5),
+            near=True,
+            near_threshold=0.1,
+        )
+        random_obstacles = gen_obstacles(
+            flattened_positions,
+            num_obstacles=N_RAND_OBSTACLES,
+            num_policy="fix",
+            radius_range=(0.1, 0.5),
+            near=False,
+            pre_obsticles=near_obstacles,
+        )
+        obstacles = near_obstacles + random_obstacles
 
         # export obstacles configs
         base_config = load_yaml(osp.join(load_source_dir, "config.yaml"))
