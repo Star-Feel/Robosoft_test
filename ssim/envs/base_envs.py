@@ -12,6 +12,7 @@ import pickle
 import shutil
 from abc import ABC, abstractmethod
 
+import bpy
 import elastica as ea
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,11 +25,10 @@ from tqdm import tqdm
 from ..arguments import MeshSurfaceArguments, SphereArguments
 from ..components import MeshSurface, RigidBodyCallBack, RodCallBack
 from ..components.callback import MeshSurfaceCallBack
+from ..visualize.pov2blend import BlenderRenderer
 from ..visualize.renderer import POVRayRenderer
 from ..visualize.visualizer import rod_objects_3d_visualize
-from pov2blend import BlenderRenderer
-import os
-import bpy
+
 
 class BaseSimulator(BaseSystemCollection, Constraints, Connections, Forcing,
                     Damping, Contact, CallBacks):
@@ -536,7 +536,7 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
         output_images_dir,
         fps,
         width=960,
-        height=540, 
+        height=540,
     ):
         top_view_dir = os.path.join(output_images_dir, "top")
         blender_renderer = BlenderRenderer(top_view_dir)
@@ -577,7 +577,7 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
                 },
                 save_img=False,
             )
-        
+
         blender_renderer.batch_rendering(top_view_dir, top_view_dir)
         renderer.create_video(only_top=True)
 

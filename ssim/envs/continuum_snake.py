@@ -10,7 +10,7 @@ from ..arguments import (RodArguments, SimulatorArguments, SphereArguments,
                          SuperArguments)
 from .base_envs import FetchableRodObjectsEnvironment
 
-from new_forces import ChangeableMuscleTorques
+from ..components import ChangeableMuscleTorques
 
 
 @dataclass
