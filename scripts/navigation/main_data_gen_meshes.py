@@ -1,15 +1,13 @@
 import copy
 import os
-import sys
-from typing import TypedDict
-import numpy as np
 import os.path as osp
+from typing import TypedDict
 
-sys.path.append("/data/zyw/workshop/attempt")
-from tqdm import tqdm
-from ssim.visualize.visualizer import plot_contour, plot_contour_with_spheres
-from ssim.utils import load_yaml, save_yaml, save_json, load_json
+import numpy as np
 import trimesh
+from tqdm import tqdm
+
+from ssim.utils import load_yaml, save_yaml
 
 N = 100
 
@@ -35,7 +33,7 @@ MESH_TEMP = {
 
 def get_assets_with_bounding_boxes():
     assets = {}
-    for root, dirs, files in os.walk(ASSETS_DIR):
+    for root, _, files in os.walk(ASSETS_DIR):
         for file in files:
             if file.endswith(".stl"):
                 asset_path = os.path.join(root, file)
