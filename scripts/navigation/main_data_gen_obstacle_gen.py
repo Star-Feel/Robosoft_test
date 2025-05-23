@@ -11,8 +11,8 @@ from ssim.visualize.visualizer import plot_contour_with_spheres
 
 N = 100
 
-N_NEAR_OBSTACLES = 10
-N_RAND_OBSTACLES = 10
+N_NEAR_OBSTACLES = 5
+N_RAND_OBSTACLES = 5
 
 SOURCE_DIR = "./work_dirs/navigation_data/random_go"
 TARGET_DIR = "./work_dirs/navigation_data/obstacle"
@@ -115,7 +115,7 @@ def main():
             flattened_positions,
             num_obstacles=N_RAND_OBSTACLES,
             num_policy="fix",
-            radius_range=(0.1, 0.5),
+            radius_range=(0.1, 0.3),
             near=False,
             pre_obsticles=near_obstacles,
         )
