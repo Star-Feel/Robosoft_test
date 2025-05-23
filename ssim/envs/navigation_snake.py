@@ -2,22 +2,31 @@ __all__ = [
     "NavigationSnakeActionEnvironment",
     "NavigationSnakeTorqueEnvironment",
     "NavigationSnakeArguments",
+    "NavigationSnakeTorqueEnvironmentForGymTrain",
 ]
 from dataclasses import dataclass
+from typing import Optional
 
 import elastica as ea
 import numpy as np
 from elastica import RigidBodyBase
 from elastica._calculus import _isnan_check
+import gym
 
-from ..arguments import (RodArguments, SimulatorArguments, SphereArguments,
-                         SuperArguments)
-from ..components import (ChangeableMuscleTorques,
-                          RigidBodyAnalyticalLinearDamper,
-                          RodMeshSurfaceContactWithGridMethod)
+from ..arguments import (
+    RodArguments,
+    SimulatorArguments,
+    SphereArguments,
+    SuperArguments,
+)
+from ..components import (
+    ChangeableMuscleTorques,
+    RigidBodyAnalyticalLinearDamper,
+    RodMeshSurfaceContactWithGridMethod,
+)
 from ..components.contact import JoinableRodSphereContact, surface_grid_xyz
 from ..components.surface.mesh_surface import MeshSurface
-from .base_envs import FetchableRodObjectsEnvironment
+from .base_envs import BaseSimulator, FetchableRodObjectsEnvironment, SimulatedEnvironment
 
 
 @dataclass
@@ -47,7 +56,8 @@ class NavigationSnakeActionEnvironment(FetchableRodObjectsEnvironment):
 
     def setup(self, callback_step_skip: int = -1):
         shear_modulus = self.rod_config.youngs_modulus / (
-            self.rod_config.poisson_ratio + 1.0)
+            self.rod_config.poisson_ratio + 1.0
+        )
 
         self.add_shearable_rod(
             n_elem=self.rod_config.n_elem,
@@ -99,10 +109,11 @@ class NavigationSnakeActionEnvironment(FetchableRodObjectsEnvironment):
         normal_plane = self.rod_config.normal
         slip_velocity_tol = 1e-8
         froude = 0.1
-        mu = self.rod_config.base_length / (period * period *
-                                            np.abs(gravitational_acc) * froude)
-        kinetic_mu_array = np.array([mu, 8 * mu, 20.0 * mu
-                                     ])  # [forward, backward, sideways]
+        mu = self.rod_config.base_length / (
+            period * period * np.abs(gravitational_acc) * froude
+        )
+        kinetic_mu_array = np.array([mu, 8 * mu, 20.0 * mu]
+                                    )  # [forward, backward, sideways]
         static_mu_array = 2 * kinetic_mu_array
         self.simulator.add_forcing_to(self.shearable_rod).using(
             ea.AnisotropicFrictionalPlane,
@@ -124,9 +135,8 @@ class NavigationSnakeActionEnvironment(FetchableRodObjectsEnvironment):
         )
 
         callback_step_skip = int(
-            1.0 /
-            (self.sim_config.rendering_fps *
-             self.time_step)) if callback_step_skip < 0 else callback_step_skip
+            1.0 / (self.sim_config.rendering_fps * self.time_step)
+        ) if callback_step_skip < 0 else callback_step_skip
         # Add callbacks for data collection if enabled
         self._add_data_collection_callbacks(callback_step_skip)
 
@@ -143,12 +153,10 @@ class NavigationSnakeActionEnvironment(FetchableRodObjectsEnvironment):
                 return {"status": "error", "message": "NaN values detected"}
 
         return {
-            "time":
-            self.time_tracker,
-            "rod_tip_position":
-            self.shearable_rod.position_collection[..., -1].copy(),
-            "status":
-            "ok"
+            "time": self.time_tracker,
+            "rod_tip_position": self.shearable_rod.position_collection[
+                ..., -1].copy(),
+            "status": "ok"
         }
 
     def set_target(self, target: list[float]):
@@ -182,17 +190,19 @@ class NavigationSnakeTorqueEnvironment(FetchableRodObjectsEnvironment):
             collision = not (self.object2id[obj] == self.target_id)
             if isinstance(obj, ea.Sphere):
                 self.simulator.detect_contact_between(
-                    self.shearable_rod, obj).using(
-                        JoinableRodSphereContact,
-                        k=50,
-                        nu=10,
-                        velocity_damping_coefficient=1e3,
-                        friction_coefficient=10,
-                        index=np.array(range(self.rod_config.n_elem + 1)),
-                        action_flags=self.action_flags,
-                        attach_flags=self.attach_flags,
-                        flag_id=self.object2id[obj],
-                        collision=collision)
+                    self.shearable_rod, obj
+                ).using(
+                    JoinableRodSphereContact,
+                    k=50,
+                    nu=10,
+                    velocity_damping_coefficient=1e3,
+                    friction_coefficient=10,
+                    index=np.array(range(self.rod_config.n_elem + 1)),
+                    action_flags=self.action_flags,
+                    attach_flags=self.attach_flags,
+                    flag_id=self.object2id[obj],
+                    collision=collision
+                )
             elif isinstance(obj, MeshSurface):
                 grid_size = np.min(obj.mesh_scale) / 10
                 # faces: (dim, n_faces, n_points)
@@ -204,13 +214,15 @@ class NavigationSnakeTorqueEnvironment(FetchableRodObjectsEnvironment):
                 nu = 100  # 阻尼系数
                 surface_tol = 1e-6
                 self.simulator.detect_contact_between(
-                    self.shearable_rod,
-                    obj).using(RodMeshSurfaceContactWithGridMethod,
-                               k=k,
-                               nu=nu,
-                               faces_grid=faces_grid,
-                               grid_size=grid_size,
-                               surface_tol=surface_tol)
+                    self.shearable_rod, obj
+                ).using(
+                    RodMeshSurfaceContactWithGridMethod,
+                    k=k,
+                    nu=nu,
+                    faces_grid=faces_grid,
+                    grid_size=grid_size,
+                    surface_tol=surface_tol
+                )
 
     def add_dampen_to_objects(self, dampen_constant: float = 1):
         for object_ in self.objects:
@@ -227,7 +239,8 @@ class NavigationSnakeTorqueEnvironment(FetchableRodObjectsEnvironment):
         #     self.set_target(self.target_id)
 
         shear_modulus = self.rod_config.youngs_modulus / (
-            self.rod_config.poisson_ratio + 1.0)
+            self.rod_config.poisson_ratio + 1.0
+        )
 
         self.add_shearable_rod(
             n_elem=self.rod_config.n_elem,
@@ -275,10 +288,11 @@ class NavigationSnakeTorqueEnvironment(FetchableRodObjectsEnvironment):
         normal_plane = self.rod_config.normal
         slip_velocity_tol = 1e-8
         froude = 0.1
-        mu = self.rod_config.base_length / (period * period *
-                                            np.abs(gravitational_acc) * froude)
-        kinetic_mu_array = np.array([mu, 8 * mu, 20.0 * mu
-                                     ])  # [forward, backward, sideways]
+        mu = self.rod_config.base_length / (
+            period * period * np.abs(gravitational_acc) * froude
+        )
+        kinetic_mu_array = np.array([mu, 8 * mu, 20.0 * mu]
+                                    )  # [forward, backward, sideways]
         static_mu_array = 2 * kinetic_mu_array
         self.simulator.add_forcing_to(self.shearable_rod).using(
             ea.AnisotropicFrictionalPlane,
@@ -300,9 +314,8 @@ class NavigationSnakeTorqueEnvironment(FetchableRodObjectsEnvironment):
         )
 
         callback_step_skip = int(
-            1.0 /
-            (self.sim_config.rendering_fps *
-             self.time_step)) if callback_step_skip < 0 else callback_step_skip
+            1.0 / (self.sim_config.rendering_fps * self.time_step)
+        ) if callback_step_skip < 0 else callback_step_skip
         # Add callbacks for data collection if enabled
         self._add_data_collection_callbacks(callback_step_skip)
 
@@ -322,22 +335,116 @@ class NavigationSnakeTorqueEnvironment(FetchableRodObjectsEnvironment):
                 return {"status": "error", "message": "NaN values detected"}
 
         return {
-            "time":
-            self.time_tracker,
-            "rod_tip_position":
-            self.shearable_rod.position_collection[..., -1].copy(),
-            "status":
-            "ok"
+            "time": self.time_tracker,
+            "rod_tip_position": self.shearable_rod.position_collection[
+                ..., -1].copy(),
+            "status": "ok"
         }
 
     def set_target(self, target_id: int):
         self.target = self.object_configs[target_id].center
         self.eps = self.object_configs[target_id].radius
 
+    def set_target_id(self, target_id: int):
+        self.target_id = target_id
+
     def reach(self, eps=None):
         eps = eps if eps is not None else self.eps
         rod_tip_position = self.shearable_rod.position_collection[...,
                                                                   -1].copy()
-        distance = np.linalg.norm(rod_tip_position[[0, 2]] -
-                                  self.target[[0, 2]])
+        distance = np.linalg.norm(
+            rod_tip_position[[0, 2]] - self.target[[0, 2]]
+        )
         return distance < eps
+
+
+class RodControlMixin(SimulatedEnvironment, gym.Env):
+
+    def __init__(
+        self,
+        *args,
+        trainable: bool = False,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.trainable = trainable
+
+        if self.trainable:
+            self.trainable_init()
+
+    def trainable_init(self):
+        pass
+
+    def reset(self):
+        self.simulator = BaseSimulator()
+        self.time_tracker = np.float64(0.0)
+        state = self.setup()
+        return state
+
+    def get_state(self):
+        pass
+
+    def render(self):
+        pass
+
+    def step(self, action: np.ndarray):
+        pass
+
+    def sampleAction(self):
+
+        random_action = (
+            np.random.rand(1 * self.number_of_control_points) - 0.5
+        ) * 2
+        return random_action
+
+    def seed(self, seed):
+        np.random.seed(seed)
+
+
+class NavigationSnakeTorqueEnvironmentForGymTrain(
+    NavigationSnakeTorqueEnvironment,
+    RodControlMixin,
+):
+
+    def __init__(self, configs: NavigationSnakeArguments):
+        super().__init__(configs)
+
+        self.action_space = gym.spaces.Box(
+            low=-1.0,
+            high=1.0,
+            shape=(3, self.rod_config.n_elem),
+            dtype=np.float32,
+        )
+        self.observation_space = gym.spaces.Box(
+            low=0,
+            high=255,
+            shape=(64, 64, 3),
+            dtype=np.uint8,
+        )
+
+    def setup(self):
+        self.objects = []
+        self.object2id = {}
+        self.object_callbacks = []
+        self.action_flags = []
+        self.attach_flags = []
+        super().setup()
+        state = self.get_state()
+        return state
+
+    def step(self, action: np.ndarray):
+        super().step(action, 1)
+        state = self.get_state()
+        reward = np.random.randint(0, 10)
+        if reward > 5:
+            done = True
+        else:
+            done = False
+
+        return state, reward, done, {"ctime": self.time_tracker}
+
+    def get_state(self):
+        # 渲染出图像
+        state = np.random.randint(0, 256, (64, 64, 3), dtype=np.uint8)
+
+        return state
