@@ -1,2 +1,28 @@
 transformers
 pyyaml
+numba
+scipy
+pyvista
+bpy
+trimesh
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/data/zyw/.usr/miniconda3/envs/ssim_rl/lib/python3.11/site-packages/stable_baselines3/ppo/ppo.py", line 171, in __init__
+    self._setup_model()
+  File "/data/zyw/.usr/miniconda3/envs/ssim_rl/lib/python3.11/site-packages/stable_baselines3/ppo/ppo.py", line 174, in _setup_model
+    super()._setup_model()
+  File "/data/zyw/.usr/miniconda3/envs/ssim_rl/lib/python3.11/site-packages/stable_baselines3/common/on_policy_algorithm.py", line 135, in _setup_model
+    self.policy = self.policy_class(  # type: ignore[assignment]
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/zyw/.usr/miniconda3/envs/ssim_rl/lib/python3.11/site-packages/stable_baselines3/common/policies.py", line 818, in __init__
+    super().__init__(
+  File "/data/zyw/.usr/miniconda3/envs/ssim_rl/lib/python3.11/site-packages/stable_baselines3/common/policies.py", line 507, in __init__
+    self.features_extractor = self.make_features_extractor()
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/zyw/.usr/miniconda3/envs/ssim_rl/lib/python3.11/site-packages/stable_baselines3/common/policies.py", line 120, in make_features_extractor
+    return self.features_extractor_class(self.observation_space, **self.features_extractor_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/zyw/.usr/miniconda3/envs/ssim_rl/lib/python3.11/site-packages/stable_baselines3/common/torch_layers.py", line 78, in __init__
+    assert is_image_space(observation_space, check_channels=False, normalized_image=normalized_image), (
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: You should use NatureCNN only with images not with Box(-inf, inf, (3, 256, 256), float32)

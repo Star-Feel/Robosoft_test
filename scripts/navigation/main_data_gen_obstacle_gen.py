@@ -11,8 +11,8 @@ from ssim.visualize.visualizer import plot_contour_with_spheres
 
 N = 100
 
-N_NEAR_OBSTACLES = 8
-N_RAND_OBSTACLES = 8
+N_NEAR_OBSTACLES = 10
+N_RAND_OBSTACLES = 10
 
 SOURCE_DIR = "./work_dirs/navigation_data/random_go"
 TARGET_DIR = "./work_dirs/navigation_data/obstacle"
