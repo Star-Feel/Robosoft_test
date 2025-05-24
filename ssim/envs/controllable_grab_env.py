@@ -141,7 +141,7 @@ class ControllableGrabEnvironment(
             muscle_torque_scale=self.alpha,
             direction=str("normal"),
             step_skip=callback_step_skip,
-            max_rate_of_change_of_activation=np.infty,
+            max_rate_of_change_of_activation=np.inf,
             torque_profile_recorder=self.
             torque_profile_list_for_muscle_in_normal_dir,
             # callbacks=self.torque_normal_callback,
@@ -156,7 +156,7 @@ class ControllableGrabEnvironment(
             muscle_torque_scale=self.alpha,
             direction=str("binormal"),
             step_skip=callback_step_skip,
-            max_rate_of_change_of_activation=np.infty,
+            max_rate_of_change_of_activation=np.inf,
             torque_profile_recorder=self.
             torque_profile_list_for_muscle_in_binormal_dir,
             # callbacks=self.torque_binormal_callback,
@@ -171,7 +171,7 @@ class ControllableGrabEnvironment(
             muscle_torque_scale=self.beta,
             direction=str("tangent"),
             step_skip=callback_step_skip,
-            max_rate_of_change_of_activation=np.infty,
+            max_rate_of_change_of_activation=np.inf,
             torque_profile_recorder=self.
             torque_profile_list_for_muscle_in_twist_dir,
             # callbacks=self.torque_twist_callback,

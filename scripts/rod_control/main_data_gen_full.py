@@ -61,13 +61,19 @@ def get_description():
 def main():
     for i in tqdm(range(Gen_data_Num)):
         local_random_dir = osp.join(RANDOM_DIR, f"{i}")
-        # local_obstacle_dir = osp.join(OBSTACLE_DIR, f"{i}")
+        local_obstacle_dir = osp.join(OBSTACLE_DIR, f"{i}")
         local_target_object_dir = osp.join(TARGET_OBJECT_DIR, f"{i}")
         local_target_dir = osp.join(TARGET_DIR, f"{i}")
         os.makedirs(local_target_dir, exist_ok=True)
 
-        config = load_yaml(osp.join(local_target_object_dir, "config.yaml"))
-        spheres = config["objects"]
+        config = load_yaml(osp.join(local_random_dir, "config.yaml"))
+        obstacle_config = load_yaml(
+            osp.join(local_obstacle_dir, "config.yaml")
+        )
+        target_object_config = load_yaml(
+            osp.join(local_target_object_dir, "config.yaml")
+        )
+        spheres = obstacle_config["objects"] + target_object_config["objects"]
 
         desciprtion, obj_color, tgt_color, obj_shape = get_description()
 
@@ -88,7 +94,7 @@ def main():
         info = copy.deepcopy(info_temp)
         info["id"] = i
         info["config"] = osp.join(local_target_dir, "config.yaml")
-        info["state_action"] = osp.join(local_random_dir, "state_action.pkl")
+        info["state_action"] = osp.join(local_target_dir, "state_action.pkl")
         info["object_id"] = object_id
         info["target_id"] = target_id
         info["description"] = desciprtion

@@ -7,9 +7,10 @@ from tqdm import tqdm
 from ssim.visualize.visualizer import plot_contour, plot_contour_with_spheres
 from ssim.utils import load_yaml, save_yaml
 
-Gen_data_Num = 100
+Gen_data_Num = 50
 
 SOURCE_DIR = "./work_dirs/rod_control_data/random_go"
+FULL_DIR = "./work_dirs/rod_control_data/full"
 TARGET_DIR = "./work_dirs/rod_control_data/obstacle"
 
 
@@ -75,9 +76,10 @@ def gen_obstacles(
 def main():
     for i in tqdm(range(Gen_data_Num)):
         load_source_dir = osp.join(SOURCE_DIR, f"{i}")
+        local_full_dir = osp.join(FULL_DIR, f"{i}")
         load_target_dir = osp.join(TARGET_DIR, f"{i}")
         os.makedirs(load_target_dir, exist_ok=True)
-        with open(osp.join(load_source_dir, "state_action.pkl"), "rb") as f:
+        with open(osp.join(local_full_dir, "state_action.pkl"), "rb") as f:
             state_action = pickle.load(f)
 
         positions = np.array(state_action["rod_position"])

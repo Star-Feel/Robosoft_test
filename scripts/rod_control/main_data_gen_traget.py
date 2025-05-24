@@ -10,7 +10,6 @@ from ssim.utils import load_yaml, save_yaml
 N = 100
 
 RANDOM_DIR = "./work_dirs/rod_control_data/random_go"
-OBSTACLE_DIR = "./work_dirs/rod_control_data/obstacle"
 TARGET_DIR = "./work_dirs/rod_control_data/target"
 
 
@@ -39,7 +38,6 @@ def get_target(
 def main():
     for i in tqdm(range(N)):
         local_random_dir = osp.join(RANDOM_DIR, f"{i}")
-        local_obstacle_dir = osp.join(OBSTACLE_DIR, f"{i}")
         local_target_dir = osp.join(TARGET_DIR, f"{i}")
         os.makedirs(local_target_dir, exist_ok=True)
 
@@ -61,15 +59,15 @@ def main():
         place_direction = positions[place, -1, :] - positions[place, -2, :]
         place_direction = place_direction / np.linalg.norm(place_direction)
         object_radius, object_center = get_object(
-            pick_position, pick_direction, (0, 0.1)
+            pick_position, pick_direction, (0.01, 0.1)
         )
         target_radius, target_center = get_target(
-            place_position, place_direction, object_radius
+            place_position, place_direction, object_radius * 0.5
         )
 
         # export obstacles configs
-        base_config = load_yaml(osp.join(local_obstacle_dir, "config.yaml"))
-        spheres = base_config["objects"]
+        base_config = load_yaml(osp.join(local_random_dir, "config.yaml"))
+        spheres = []
         spheres.append({
             "type": "sphere",
             "center": object_center,
@@ -84,6 +82,7 @@ def main():
             "density": 1.0,
             "mark": "target"
         })
+        base_config["objects"] = spheres
         save_yaml(base_config, osp.join(local_target_dir, "config.yaml"))
 
 

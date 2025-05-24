@@ -10,7 +10,7 @@ from ssim.utils import load_json, load_yaml
 
 
 def main():
-    data_path = "./work_dirs/rod_control_data/full/0/info.json"
+    data_path = "./work_dirs/rod_control_data/full/26/info.json"
     work_dir = "./work_dirs/rod_control_demo"
     info = load_json(data_path)
     # Generate data setting
