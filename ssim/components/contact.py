@@ -13,46 +13,50 @@ import numba
 import numpy as np
 
 
-def find_contact_faces_idx(faces_grid, x_min, y_min, grid_size,
-                           position_collection):
+def find_contact_faces_idx(
+    faces_grid, x_min, y_min, grid_size, position_collection
+):
     element_position = elastica.contact_utils._node_to_element_position(
-        position_collection)
+        position_collection
+    )
     n_element = element_position.shape[-1]
     position_idx_array = np.empty((0))
     face_idx_array = np.empty((0))
     grid_position = np.round(
-        (element_position[0:2, :] - np.array([x_min, y_min]).reshape(
-            (2, 1))) / grid_size)
+        (element_position[0:2, :] - np.array([x_min, y_min]).reshape((2, 1)))
+        / grid_size
+    )
 
     # find face neighborhood of each element position
 
     for i in range(n_element):
         try:
-            face_idx_1 = faces_grid[(int(grid_position[0, i]),
-                                     int(grid_position[1,
-                                                       i]))]  # first quadrant
+            face_idx_1 = faces_grid[
+                (int(grid_position[0, i]), int(grid_position[1, i]
+                                               ))]  # first quadrant
         except Exception:
             face_idx_1 = np.empty((0))
         try:
-            face_idx_2 = faces_grid[(int(grid_position[0, i] - 1),
-                                     int(grid_position[1,
-                                                       i]))]  # second quadrant
+            face_idx_2 = faces_grid[
+                (int(grid_position[0, i] - 1), int(grid_position[1, i]
+                                                   ))]  # second quadrant
         except Exception:
             face_idx_2 = np.empty((0))
         try:
-            face_idx_3 = faces_grid[(int(grid_position[0, i] - 1),
-                                     int(grid_position[1, i] -
-                                         1))]  # third quadrant
+            face_idx_3 = faces_grid[
+                (int(grid_position[0, i] - 1),
+                 int(grid_position[1, i] - 1))]  # third quadrant
         except Exception:
             face_idx_3 = np.empty((0))
         try:
-            face_idx_4 = faces_grid[(int(grid_position[0, i]),
-                                     int(grid_position[1, i] -
-                                         1))]  # fourth quadrant
+            face_idx_4 = faces_grid[
+                (int(grid_position[0, i]),
+                 int(grid_position[1, i] - 1))]  # fourth quadrant
         except Exception:
             face_idx_4 = np.empty((0))
         face_idx_element = np.concatenate(
-            (face_idx_1, face_idx_2, face_idx_3, face_idx_4))
+            (face_idx_1, face_idx_2, face_idx_3, face_idx_4)
+        )
         face_idx_element_no_duplicates = np.unique(face_idx_element)
         if face_idx_element_no_duplicates.size == 0:
             raise RuntimeError(
@@ -60,10 +64,12 @@ def find_contact_faces_idx(faces_grid, x_min, y_min, grid_size,
             )  # a rod element is on four grids with no faces
 
         face_idx_array = np.concatenate(
-            (face_idx_array, face_idx_element_no_duplicates))
+            (face_idx_array, face_idx_element_no_duplicates)
+        )
         n_contacts = face_idx_element_no_duplicates.shape[0]
-        position_idx_array = np.concatenate((position_idx_array, i * np.ones(
-            (n_contacts, ))))
+        position_idx_array = np.concatenate(
+            (position_idx_array, i * np.ones((n_contacts, )))
+        )
 
     position_idx_array = position_idx_array.astype(int)
     face_idx_array = face_idx_array.astype(int)
@@ -71,8 +77,9 @@ def find_contact_faces_idx(faces_grid, x_min, y_min, grid_size,
 
 
 @numba.njit(cache=True)
-def surface_grid_numba(faces, grid_size, face_x_left, face_x_right,
-                       face_y_down, face_y_up):
+def surface_grid_numba(
+    faces, grid_size, face_x_left, face_x_right, face_y_down, face_y_up
+):
     """
     Computes the faces_grid dictionary for rod-meshsurface contact
     Consider calling surface_grid for face_grid generation
@@ -89,14 +96,14 @@ def surface_grid_numba(faces, grid_size, face_x_left, face_x_right,
             y_down = y_min + (j * grid_size)
             y_up = y_min + ((j + 1) * grid_size)
             if np.any(
-                    np.where(((face_y_down > y_up) + (face_y_up < y_down) +
-                              (face_x_right < x_left) +
-                              (face_x_left > x_right)) == 0)[0]):
-                faces_grid[(i,
-                            j)] = np.where(((face_y_down > y_up) +
-                                            (face_y_up < y_down) +
-                                            (face_x_right < x_left) +
-                                            (face_x_left > x_right)) == 0)[0]
+                np.where(((face_y_down > y_up) + (face_y_up < y_down)
+                          + (face_x_right < x_left)
+                          + (face_x_left > x_right)) == 0)[0]
+            ):
+                faces_grid[(i, j)] = np.where(
+                    ((face_y_down > y_up) + (face_y_up < y_down)
+                     + (face_x_right < x_left) + (face_x_left > x_right)) == 0
+                )[0]
     return faces_grid
 
 
@@ -112,8 +119,10 @@ def surface_grid(faces, grid_size):
     face_y_up = np.max(faces[1, :, :], axis=0)
 
     return dict(
-        surface_grid_numba(faces, grid_size, face_x_left, face_x_right,
-                           face_y_down, face_y_up))
+        surface_grid_numba(
+            faces, grid_size, face_x_left, face_x_right, face_y_down, face_y_up
+        )
+    )
 
 
 @numba.njit(cache=True, nopython=True)
@@ -190,7 +199,8 @@ def _calculate_contact_forces_rod_mesh_surface(
     # Elastic force response due to penetration
 
     distance_from_plane = _batch_dot(
-        normals_on_elements, (element_position_contacts - contact_face_centers)
+        normals_on_elements,
+        (element_position_contacts - contact_face_centers)
     )
     plane_penetration = (
         -np.abs(np.minimum(distance_from_plane - radius_contacts, 0.0))**1.5
@@ -210,22 +220,21 @@ def _calculate_contact_forces_rod_mesh_surface(
     plane_response_force_contacts = elastic_force + damping_force
 
     # Check if the rod elements are in contact with plane.
-    no_contact_point_idx = np.where(
-        (distance_from_plane - radius_contacts) > surface_tol
-    )[0]
+    no_contact_point_idx = np.where((distance_from_plane
+                                     - radius_contacts) > surface_tol)[0]
     # If rod element does not have any contact with plane, plane cannot apply response
     # force on the element. Thus lets set plane response force to 0.0 for the no contact points.
     plane_response_force_contacts[..., no_contact_point_idx] = 0.0
 
     plane_response_forces = np.zeros_like(external_forces)
     for i in range(len(position_idx_array)):
-        plane_response_forces[
-            :, position_idx_array[i]
-        ] += plane_response_force_contacts[:, i]
+        plane_response_forces[:, position_idx_array[i]
+                              ] += plane_response_force_contacts[:, i]
 
     # Update the external forces
-    elastica.contact_utils._elements_to_nodes_inplace(plane_response_forces,
-                                                      external_forces)
+    elastica.contact_utils._elements_to_nodes_inplace(
+        plane_response_forces, external_forces
+    )
     return (
         _batch_norm(plane_response_force_contacts),
         no_contact_point_idx,
@@ -250,12 +259,14 @@ class RodMeshSurfaceContactWithGridMethod(NoContact):
     ... )
     """
 
-    def __init__(self,
-                 k: float,
-                 nu: float,
-                 faces_grid: dict,
-                 grid_size: float,
-                 surface_tol=1e-4):
+    def __init__(
+        self,
+        k: float,
+        nu: float,
+        faces_grid: dict,
+        grid_size: float,
+        surface_tol=1e-4
+    ):
         """
 
         Parameters
@@ -300,14 +311,13 @@ class RodMeshSurfaceContactWithGridMethod(NoContact):
             AllowedContactType
         """
         if not issubclass(system_one.__class__, RodBase) or not issubclass(
-                system_two.__class__, MeshSurface
+            system_two.__class__, MeshSurface
         ):
             raise TypeError(
                 "Systems provided to the contact class have incorrect order/type. \n"
                 " First system is {0} and second system is {1}. \n"
-                " First system should be a rod, second should be a mesh surface".format(
-                    system_one.__class__, system_two.__class__
-                )
+                " First system should be a rod, second should be a mesh surface"
+                .format(system_one.__class__, system_two.__class__)
             )
 
         elif not faces_grid["grid_size"] == grid_size:
@@ -321,13 +331,15 @@ class RodMeshSurfaceContactWithGridMethod(NoContact):
             )
 
         elif not np.all(
-                faces_grid["surface_reorient"] == system_two.mesh_orientation):
+            faces_grid["surface_reorient"] == system_two.mesh_orientation
+        ):
             raise TypeError(
                 "Imported grid's surface orientation does not match with the current mesh_surface rientation. "
             )
 
-    def apply_contact(self, system_one: RodType,
-                      system_two: AllowedContactType) -> tuple:
+    def apply_contact(
+        self, system_one: RodType, system_two: AllowedContactType
+    ) -> tuple:
         """
         In the case of contact with the plane, this function computes the plane reaction force on the element.
 
@@ -383,17 +395,19 @@ class RodMeshSurfaceContactWithGridMethod(NoContact):
 
 class JoinableRodSphereContact(RodSphereContact):
 
-    def __init__(self,
-                 k: float,
-                 nu: float,
-                 velocity_damping_coefficient=0.0,
-                 friction_coefficient=0.0,
-                 index: int = -1,
-                 action_flags: list[bool] = [False],
-                 attach_flags: list[bool] = [False],
-                 flag_id: int = 0,
-                 collision: bool = True,
-                 eps: float = 1e-3):
+    def __init__(
+        self,
+        k: float,
+        nu: float,
+        velocity_damping_coefficient=0.0,
+        friction_coefficient=0.0,
+        index: int = -1,
+        action_flags: list[bool] = [False],
+        attach_flags: list[bool] = [False],
+        flag_id: int = 0,
+        collision: bool = True,
+        eps: float = 1e-3
+    ):
         """
         Parameters
         ----------
@@ -418,7 +432,8 @@ class JoinableRodSphereContact(RodSphereContact):
         self.action_flags = action_flags
         self.attach_flags = attach_flags
         self.flag_id = flag_id
-        self.relative_position = None
+        self.relative_distance = None
+        self.relative_direction = None
         self.collision = collision
         self.eps = eps
 
@@ -452,14 +467,15 @@ class JoinableRodSphereContact(RodSphereContact):
         radias = system_two.radius
         center = system_two.position_collection
         rod_pos = system_one.position_collection
-        if np.linalg.norm(rod_pos[..., -1] -
-                          center[..., 0]) <= radias * (1 + self.eps):
+        if np.linalg.norm(rod_pos[..., -1]
+                          - center[..., 0]) <= radias * (1 + self.eps):
             self.attach_flags[self.flag_id] = True
         else:
             self.attach_flags[self.flag_id] = False
 
-    def apply_contact(self, system_one: RodType,
-                      system_two: AllowedContactType) -> None:
+    def apply_contact(
+        self, system_one: RodType, system_two: AllowedContactType
+    ) -> None:
         """
         Apply contact forces and torques between RodType object and Sphere object.
 
@@ -473,18 +489,58 @@ class JoinableRodSphereContact(RodSphereContact):
         """
         self._attach_check(system_one, system_two)
         if not self.action_flags[self.flag_id]:
-            self.relative_position = None
+            self.relative_distance = None
+            self.relative_direction = None
             if self.collision:
                 super().apply_contact(system_one, system_two)
         else:
-            if self.relative_position is None:
-                self.relative_position = \
-                    system_two.position_collection[..., 0] - \
+            if self.relative_distance is None:
+
+                self.relative_distance = np.linalg.norm(
+                    system_two.position_collection[..., 0]
+                    - system_one.position_collection[..., self.index]
+                )
+
+                system_one_direction = (
                     system_one.position_collection[..., self.index]
+                    - system_one.position_collection[..., self.index - 1]
+                )
+                system_one_direction = system_one_direction / np.linalg.norm(
+                    system_one_direction
+                )
+                system_two_direction = (
+                    system_two.position_collection[..., 0]
+                    - system_one.position_collection[..., self.index]
+                )
+                system_two_direction = system_two_direction / np.linalg.norm(
+                    system_two_direction
+                )
+
+                self.relative_direction = (
+                    system_two_direction - system_one_direction
+                )
+
             else:
-                system_two.position_collection[..., 0] = \
-                    system_one.position_collection[..., self.index] \
-                    + self.relative_position
+                system_one_direction = (
+                    system_one.position_collection[..., self.index]
+                    - system_one.position_collection[..., self.index - 1]
+                )
+                system_one_direction = system_one_direction / np.linalg.norm(
+                    system_one_direction
+                )
+                system_two_direction = (
+                    system_one_direction + self.relative_direction
+                )
+                system_two_direction = system_two_direction / np.linalg.norm(
+                    system_two_direction
+                )
+                relative_position = (
+                    system_two_direction * self.relative_distance
+                )
+                system_two.position_collection[..., 0] = (
+                    system_one.position_collection[..., self.index]
+                    + relative_position
+                )
 
             system_two.velocity_collection[
                 ..., 0] = system_one.velocity_collection[..., self.index]
