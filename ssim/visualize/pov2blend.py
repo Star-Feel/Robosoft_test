@@ -38,7 +38,6 @@ class BlenderRenderer:
 
         # 创建顶部环境灯光
         bpy.ops.object.light_add(type='SUN', location=(0, 0, 10))
-        bpy.ops.object.light_add(type='SUN', location=(0, 0, 10))
         top_light = bpy.context.object
         top_light.name = "SunLight"
         top_light.data.energy = 5
@@ -277,7 +276,7 @@ class BlenderRenderer:
                 pos = self.coord_pov2blend(*pos)
                 radius = float(sphere_data_match.group(2))
 
-                obj = bpy.context.selected_objects[idx + 3]
+                obj = bpy.context.selected_objects[idx + 4]
                 obj.location = tuple(pos)
                 obj.rotation_euler = (math.radians(90), 0, math.radians(90))
                 # 如何将物体限制在球体内？
@@ -320,7 +319,7 @@ class BlenderRenderer:
                 scale = float(mesh_scale.group(1))
                 # scale = 0.5
 
-                obj = bpy.context.selected_objects[3 + len(sphere_matchs) +
+                obj = bpy.context.selected_objects[4 + len(sphere_matchs) +
                                                    idx]
                 obj.location = tuple(pos)
                 if "Cup" in obj.name:
