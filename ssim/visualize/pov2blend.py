@@ -38,12 +38,14 @@ class BlenderRenderer:
 
         # 创建顶部环境灯光
         bpy.ops.object.light_add(type='SUN', location=(0, 0, 10))
+        bpy.ops.object.light_add(type='SUN', location=(0, 0, 10))
         top_light = bpy.context.object
         top_light.name = "SunLight"
         top_light.data.energy = 5
-        # top_light.data.size = 15  # 大面积光源
-        top_light.data.color = (1.0, 0.95, 0.85)
-        top_light.data.use_shadow = True
+        top_light.data.color = (1.0, 1.0, 1.0)
+        top_light.data.shadow_soft_size = 0.5                # 软阴影大小
+        top_light.rotation_euler = (0.5, 0.0, 0.0)
+
 
         # bpy.ops.object.light_add(type='AREA', location=(0, 0, 10))
         # top_light = bpy.context.object
@@ -60,6 +62,14 @@ class BlenderRenderer:
         # spot_light.data.spot_size = math.radians(60)  # 聚光灯的角度
         # spot_light.data.spot_blend = 0.15  # 聚光灯的边缘柔和度
 
+        # plane settings
+        bpy.ops.mesh.primitive_plane_add(size=20, enter_editmode=False, align='WORLD', location=(2, -2, 0))
+        plane = bpy.context.object
+        plane.name = "GroundPlane"
+        material = bpy.data.materials.new(name="GroundMaterial")
+        material.diffuse_color = (1.0, 1.0, 1.0, 1.0)  # 设置为白色
+        plane.data.materials.append(material)
+        
         # scene settings
         scene = bpy.context.scene
         scene.render.engine = 'BLENDER_EEVEE_NEXT'  # 使用 Eevee 引擎
@@ -131,11 +141,42 @@ class BlenderRenderer:
             output_file = os.path.join(output_dir,
                                        f"frame_{frame_num:05d}.png")
             bpy.data.images["Render Result"].save_render(output_file)
+            
+        
+        total_time = time.time() - total_start_time
+        print(f"批量渲染完成，总用时: {total_time:.2f}秒，平均每帧: {total_time/len(pov_files):.2f}秒")
+
+    def Single_step_rendering(self, current_step, pov_dir, output_dir):
+
+        os.makedirs(output_dir, exist_ok=True)
+        
+        pov_file = os.path.join(pov_dir, "frame_00000.pov")
+        
+        # 加载文件来设置相机、光源和静态对象
+        self.load_pov_settings(pov_file)
+        
+        # 处理每个 POV 文件
+        total_start_time = time.time()
+
+        print(f"rendering {pov_file}")
+        
+        # 只更新蛇的部分，保留相机和其他静态物体
+        self.update_snake_only(pov_file)
+        
+        # 渲染当前帧
+        bpy.context.scene.frame_set(current_step)
+        bpy.ops.render.render()
+        
+        # 保存渲染结果
+        output_file = os.path.join(output_dir, f"step_{current_step:05d}.png")
+        bpy.data.images["Render Result"].save_render(output_file)
+        print(output_file)
+
+        # bpy.ops.memory_statistics()
 
         total_time = time.time() - total_start_time
-        print(
-            f"批量渲染完成，总用时: {total_time:.2f}秒，平均每帧: {total_time/len(pov_files):.2f}秒"
-        )
+        print(f"单步渲染完成，用时: {total_time:.2f}秒")
+
 
     def update_snake_only(self, pov_file):
         """只更新蛇的部分，保留其他场景元素不变。
@@ -260,9 +301,16 @@ class BlenderRenderer:
                 obj.scale = (safe_scale, safe_scale, safe_scale)
 
                 # 将物体位置设回球体中心
-                obj.location = tuple(pos)
+                obj.location = tuple(pos) 
+                if not obj.data.materials:
+                    material_name = "MyMaterial"  # 材质名称
+                    material = bpy.data.materials.new(name=material_name)
+                    # 设置材质的颜色
+                    material.diffuse_color = (1.0, 0.0, 0.0, 1.0) 
+                    obj.data.materials.append(material)
 
-        # mesh_matchs = re.findall(r'object\s*\{\s*cube_mesh[^}]*\}', self.pov_content, re.DOTALL)
+            
+        # mesh_matchs = re.findall(r'object\s*\{\s*cube_mesh[^}]*\}', self.pov_content, re.DOTALL)       
         for idx, mesh_match in enumerate(mesh_matchs):
             mesh_data_match = re.search(r'translate\s*<([^>]*)>', mesh_match)
             mesh_scale = re.search(r'scale\s*([0-9.]+)', mesh_match)
@@ -307,14 +355,14 @@ class BlenderRenderer:
                 obj.scale = (safe_scale, safe_scale, safe_scale)
 
                 # 将物体位置设回球体中心
-                obj.location = tuple(pos)
-
+                obj.location = tuple(pos) 
                 if not obj.data.materials:
                     material_name = "MyMaterial"  # 材质名称
                     material = bpy.data.materials.new(name=material_name)
                     # 设置材质的颜色
                     material.diffuse_color = (1.0, 0.0, 0.0, 1.0)
                     obj.data.materials.append(material)
+                
 
     def set_camera(self):
         # 设置相机
@@ -439,8 +487,8 @@ class BlenderRenderer:
                 curve_data = bpy.data.curves.new('SweepCurve', 'CURVE')
                 curve_data.dimensions = '3D'
                 curve_data.resolution_u = 12
-                curve_data.bevel_depth = 0.01  # 先设置一个小值，后面会根据每个点调整
-
+                curve_data.bevel_depth = 0.02#0.01  # 先设置一个小值，后面会根据每个点调整
+                
                 # 创建样条
                 polyline = curve_data.splines.new('BEZIER')
                 polyline.bezier_points.add(len(points) - 1)
@@ -448,6 +496,7 @@ class BlenderRenderer:
                 # 设置点位置
                 for idx, (pos, radius) in enumerate(points):
                     polyline.bezier_points[idx].co = pos
+                    polyline.bezier_points[idx].radius = 2.0
                     polyline.bezier_points[idx].handle_left_type = 'AUTO'
                     polyline.bezier_points[idx].handle_right_type = 'AUTO'
 

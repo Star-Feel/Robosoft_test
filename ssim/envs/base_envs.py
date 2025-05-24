@@ -548,9 +548,10 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
             width=width,
             height=height,
         )
+        
         frames = len(self.rod_callback['time'])
         for i in tqdm(range(frames), disable=False, desc="Rendering .povray"):
-            renderer.reset_stage()
+            renderer.reset_stage(top_camera_position=[0, 15, 2], top_camera_look_at=[-2, 0, 2])
             for object_ in self.objects:
                 id_ = self.object2id[object_]
                 object_callback = self.object_callbacks[id_]
@@ -580,6 +581,63 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
 
         blender_renderer.batch_rendering(top_view_dir, top_view_dir)
         renderer.create_video(only_top=True)
+
+    def single_step_3d_blend(        
+        self,
+        output_images_dir,
+        fps,
+        width=960,
+        height=540, 
+        current_step=0,
+        interval=0
+    ):
+        if current_step % interval == 0:
+            top_view_dir = os.path.join(output_images_dir, "top")
+            blender_renderer = BlenderRenderer(top_view_dir)
+
+            renderer = POVRayRenderer(
+                output_images_dir=output_images_dir,
+                fps=fps,
+                width=width,
+                height=height,
+            )
+
+            renderer.reset_stage(top_camera_position=[0, 15, 2], top_camera_look_at=[-2, 0, 2])
+            for object_ in self.objects:
+                id_ = self.object2id[object_]
+                object_callback = self.object_callbacks[id_]
+                if isinstance(object_, ea.Sphere):
+                    renderer.add_stage_object(
+                        object_type='sphere',
+                        name=f'sphere{id_}',
+                        position=np.squeeze(object_callback['position'][0]),
+                        radius=np.squeeze(object_callback['radius'][0]),
+                    )
+                elif isinstance(object_, MeshSurface):
+                    renderer.add_stage_object(
+                        object_type='mesh',
+                        name=f'mesh{id_}',
+                        mesh_name='cube_mesh',
+                        position=np.squeeze(object_callback['position'][0]),
+                        scale=1,  # TODO
+                        matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
+                    )
+
+            # print(self.shearable_rod.position_collection)
+            # print(self.shearable_rod.radius)
+
+            renderer.render_single_step(
+                data={
+                    "rod_position": self.shearable_rod.position_collection,
+                    "rod_radius": self.shearable_rod.radius,
+                },
+                save_img=False,
+            )
+
+            blender_renderer.Single_step_rendering(current_step, top_view_dir, top_view_dir)
+        
+
+
 
 
 # class RodObjectsEnvironment(SimulateMixin, RodObjectsMixin, ABC):
