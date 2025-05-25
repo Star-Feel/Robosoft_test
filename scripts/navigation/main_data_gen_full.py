@@ -12,6 +12,7 @@ N = 100
 RANDOM_DIR = "./work_dirs/navigation_data/random_go"
 OBSTACLE_DIR = "./work_dirs/navigation_data/obstacle"
 TARGET_OBJECT_DIR = "./work_dirs/navigation_data/target"
+VISUAL_DIR = "./work_dirs/navigation_data/visual"
 TARGET_DIR = "./work_dirs/navigation_data/full"
 
 info_temp = {
@@ -61,6 +62,7 @@ def main():
         local_random_dir = osp.join(RANDOM_DIR, f"{i}")
         local_obstacle_dir = osp.join(OBSTACLE_DIR, f"{i}")
         local_target_object_dir = osp.join(TARGET_OBJECT_DIR, f"{i}")
+        local_visual_dir = osp.join(VISUAL_DIR, f"{i}")
         local_target_dir = osp.join(TARGET_DIR, f"{i}")
         os.makedirs(local_target_dir, exist_ok=True)
 
@@ -92,6 +94,7 @@ def main():
         info["id"] = i
         info["config"] = osp.join(local_target_dir, "config.yaml")
         info["state_action"] = osp.join(local_random_dir, "state_action.pkl")
+        info["viusal"] = osp.join(local_visual_dir, "visual")
         info["target_id"] = target_id
         info["description"] = desciprtion
 
