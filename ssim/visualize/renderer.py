@@ -43,7 +43,9 @@ class POVRayRenderer:
 
         self.reset_stage(top_camera_position, top_camera_look_at)
 
-    def reset_stage(self, top_camera_position=[0, 10, 2], top_camera_look_at=[0, 0, 2]):
+    def reset_stage(
+        self, top_camera_position=[0, 10, 2], top_camera_look_at=[0, 0, 2]
+    ):
         stages = Stages()
         stages.add_camera(
             # Add first-person viewpoint
@@ -124,7 +126,8 @@ class POVRayRenderer:
 
             # Write .pov script file
             file_path = os.path.join(
-                output_path, "frame_{:05d}".format(self._current_frame))
+                output_path, "frame_{:05d}".format(self._current_frame)
+            )
             with open(file_path + ".pov", "w+") as f:
                 f.write(pov_script)
             self._batch.append(file_path)
@@ -182,11 +185,12 @@ class POVRayRenderer:
             imageset_path = os.path.join(self._output_images_dir, view_name)
 
             filename = self._ouput_filename + "_" + view_name + ".mp4"
+            file_path = os.path.join(self._output_images_dir, filename)
 
             os.system(
-                f"ffmpeg -r {self._fps} -i {imageset_path}/frame_%05d.png videos/{filename}"
+                f"ffmpeg -r {self._fps} -i {imageset_path}/frame_%05d.png {file_path} -y"
             )
-            return 
+            return
 
         for view_name in _stage_scripts.keys():
             imageset_path = os.path.join(self._output_images_dir, view_name)

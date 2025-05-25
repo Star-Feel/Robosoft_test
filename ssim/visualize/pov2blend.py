@@ -33,8 +33,9 @@ class BlenderRenderer:
         world.use_nodes = True
         bg_node = world.node_tree.nodes.get('Background')
         if bg_node:
-            bg_node.inputs['Color'].default_value = (1.0, 1.0, 1.0, 1.0
-                                                     )  # RGBA
+            bg_node.inputs['Color'].default_value = (
+                1.0, 1.0, 1.0, 1.0
+            )  # RGBA
 
         # 创建顶部环境灯光
         bpy.ops.object.light_add(type='SUN', location=(0, 0, 10))
@@ -42,9 +43,8 @@ class BlenderRenderer:
         top_light.name = "SunLight"
         top_light.data.energy = 5
         top_light.data.color = (1.0, 1.0, 1.0)
-        top_light.data.shadow_soft_size = 0.5                # 软阴影大小
+        top_light.data.shadow_soft_size = 0.5  # 软阴影大小
         top_light.rotation_euler = (0.5, 0.0, 0.0)
-
 
         # bpy.ops.object.light_add(type='AREA', location=(0, 0, 10))
         # top_light = bpy.context.object
@@ -62,13 +62,15 @@ class BlenderRenderer:
         # spot_light.data.spot_blend = 0.15  # 聚光灯的边缘柔和度
 
         # plane settings
-        bpy.ops.mesh.primitive_plane_add(size=20, enter_editmode=False, align='WORLD', location=(2, -2, 0))
+        bpy.ops.mesh.primitive_plane_add(
+            size=20, enter_editmode=False, align='WORLD', location=(2, -2, 0)
+        )
         plane = bpy.context.object
         plane.name = "GroundPlane"
         material = bpy.data.materials.new(name="GroundMaterial")
         material.diffuse_color = (1.0, 1.0, 1.0, 1.0)  # 设置为白色
         plane.data.materials.append(material)
-        
+
         # scene settings
         scene = bpy.context.scene
         scene.render.engine = 'BLENDER_EEVEE_NEXT'  # 使用 Eevee 引擎
@@ -107,8 +109,10 @@ class BlenderRenderer:
         pov_files = [f for f in os.listdir(pov_dir) if f.endswith('.pov')]
         # 从文件名中提取帧号并排序
         frame_pattern = re.compile(r'frame_(\d+)\.pov')
-        pov_files.sort(key=lambda f: int(frame_pattern.search(f).group(1))
-                       if frame_pattern.search(f) else 0)
+        pov_files.sort(
+            key=lambda f: int(frame_pattern.search(f).group(1))
+            if frame_pattern.search(f) else 0
+        )
 
         if not pov_files:
             print(f"警告: 在 {pov_dir} 中未找到 POV 文件")
@@ -137,45 +141,35 @@ class BlenderRenderer:
             bpy.ops.render.render()
 
             # 保存渲染结果
-            output_file = os.path.join(output_dir,
-                                       f"frame_{frame_num:05d}.png")
+            output_file = os.path.join(
+                output_dir, f"frame_{frame_num:05d}.png"
+            )
             bpy.data.images["Render Result"].save_render(output_file)
-            
-        
+
         total_time = time.time() - total_start_time
-        print(f"批量渲染完成，总用时: {total_time:.2f}秒，平均每帧: {total_time/len(pov_files):.2f}秒")
+        print(
+            f"批量渲染完成，总用时: {total_time:.2f}秒，平均每帧: {total_time/len(pov_files):.2f}秒"
+        )
 
     def Single_step_rendering(self, current_step, pov_dir, output_dir):
 
         os.makedirs(output_dir, exist_ok=True)
-        
+
         pov_file = os.path.join(pov_dir, "frame_00000.pov")
-        
+
         # 加载文件来设置相机、光源和静态对象
         self.load_pov_settings(pov_file)
-        
-        # 处理每个 POV 文件
-        total_start_time = time.time()
 
-        print(f"rendering {pov_file}")
-        
         # 只更新蛇的部分，保留相机和其他静态物体
         self.update_snake_only(pov_file)
-        
+
         # 渲染当前帧
         bpy.context.scene.frame_set(current_step)
         bpy.ops.render.render()
-        
+
         # 保存渲染结果
         output_file = os.path.join(output_dir, f"step_{current_step:05d}.png")
         bpy.data.images["Render Result"].save_render(output_file)
-        print(output_file)
-
-        # bpy.ops.memory_statistics()
-
-        total_time = time.time() - total_start_time
-        print(f"单步渲染完成，用时: {total_time:.2f}秒")
-
 
     def update_snake_only(self, pov_file):
         """只更新蛇的部分，保留其他场景元素不变。
@@ -207,14 +201,16 @@ class BlenderRenderer:
 
     def load_obj(self, obj_path=None):
         # obj_path == None, then load obj randomly
-        sphere_matchs = re.findall(r'sphere\s*{([^}]*)}', self.pov_content,
-                                   re.DOTALL)
-        mesh_matchs = re.findall(r'object\s*\{\s*cube_mesh[^}]*\}',
-                                 self.pov_content, re.DOTALL)
+        sphere_matchs = re.findall(
+            r'sphere\s*{([^}]*)}', self.pov_content, re.DOTALL
+        )
+        mesh_matchs = re.findall(
+            r'object\s*\{\s*cube_mesh[^}]*\}', self.pov_content, re.DOTALL
+        )
 
         if obj_path is None:
             # assets_path  = "/data/wjs/wrp/SoftRoboticaSimulator/assets"
-            assets_path = "/data/wjs/wrp/SoftRoboticaSimulator/scene_assets/living_room"
+            assets_path = "./scene_assets/living_room"
             obj_list = os.listdir(assets_path)
 
             sphere_list = itertools.cycle(["soccer", "basketball"])
@@ -227,15 +223,17 @@ class BlenderRenderer:
                         obj_path = os.path.join(assets_path, obj_chosen, file)
                         bpy.ops.wm.obj_import(filepath=obj_path)
                         for idx, obj in enumerate(
-                                bpy.context.selected_objects):
+                            bpy.context.selected_objects
+                        ):
                             if idx == 0:
                                 continue
                             else:
                                 bpy.data.objects.remove(obj, do_unlink=True)
                         break
 
-            obj_list = itertools.cycle(
-                [x for x in obj_list if x not in ["soccer", "basketball"]])
+            obj_list = itertools.cycle([
+                x for x in obj_list if x not in ["soccer", "basketball"]
+            ])
             for idx in range(len(mesh_matchs)):
                 # obj_chosen = random.choice(obj_list)
 
@@ -248,7 +246,8 @@ class BlenderRenderer:
                         obj_path = os.path.join(assets_path, obj_chosen, file)
                         bpy.ops.wm.obj_import(filepath=obj_path)
                         for idx, obj in enumerate(
-                                bpy.context.selected_objects):
+                            bpy.context.selected_objects
+                        ):
                             if idx == 0:
                                 continue
                             else:
@@ -268,8 +267,9 @@ class BlenderRenderer:
         # file_list = os.listdir(os.path.join(sphere_assets_path, obj_chosen))
 
         for idx, sphere_match in enumerate(sphere_matchs):
-            sphere_data_match = re.search(r'<([^>]*)>\s*,\s*([0-9.]+)',
-                                          sphere_match)
+            sphere_data_match = re.search(
+                r'<([^>]*)>\s*,\s*([0-9.]+)', sphere_match
+            )
 
             if sphere_data_match:
                 pos = map(float, sphere_data_match.group(1).split(','))
@@ -288,7 +288,8 @@ class BlenderRenderer:
                 max_dimension = max(
                     (local_bbox_corners[0] - local_bbox_corners[6]).length,
                     (local_bbox_corners[1] - local_bbox_corners[7]).length,
-                    (local_bbox_corners[2] - local_bbox_corners[4]).length)
+                    (local_bbox_corners[2] - local_bbox_corners[4]).length
+                )
 
                 # 计算需要的缩放系数来使物体恰好适合球体
                 # 使用直径的一半（半径）与球体半径比较
@@ -300,16 +301,15 @@ class BlenderRenderer:
                 obj.scale = (safe_scale, safe_scale, safe_scale)
 
                 # 将物体位置设回球体中心
-                obj.location = tuple(pos) 
+                obj.location = tuple(pos)
                 if not obj.data.materials:
                     material_name = "MyMaterial"  # 材质名称
                     material = bpy.data.materials.new(name=material_name)
                     # 设置材质的颜色
-                    material.diffuse_color = (1.0, 0.0, 0.0, 1.0) 
+                    material.diffuse_color = (1.0, 0.0, 0.0, 1.0)
                     obj.data.materials.append(material)
 
-            
-        # mesh_matchs = re.findall(r'object\s*\{\s*cube_mesh[^}]*\}', self.pov_content, re.DOTALL)       
+        # mesh_matchs = re.findall(r'object\s*\{\s*cube_mesh[^}]*\}', self.pov_content, re.DOTALL)
         for idx, mesh_match in enumerate(mesh_matchs):
             mesh_data_match = re.search(r'translate\s*<([^>]*)>', mesh_match)
             mesh_scale = re.search(r'scale\s*([0-9.]+)', mesh_match)
@@ -319,8 +319,8 @@ class BlenderRenderer:
                 scale = float(mesh_scale.group(1))
                 # scale = 0.5
 
-                obj = bpy.context.selected_objects[4 + len(sphere_matchs) +
-                                                   idx]
+                obj = bpy.context.selected_objects[4 + len(sphere_matchs)
+                                                   + idx]
                 obj.location = tuple(pos)
                 if "Cup" in obj.name:
                     obj.rotation_euler = (math.radians(90), 0, 0)
@@ -331,8 +331,9 @@ class BlenderRenderer:
                 elif 'big_pillow' in obj.name:
                     obj.rotation_euler = (0, 0, 0)
                 else:
-                    obj.rotation_euler = (math.radians(90), 0,
-                                          math.radians(90))
+                    obj.rotation_euler = (
+                        math.radians(90), 0, math.radians(90)
+                    )
                 # 如何将物体限制在球体内？
 
                 # 计算物体边界盒的对角线长度（作为"直径"）
@@ -342,7 +343,8 @@ class BlenderRenderer:
                 max_dimension = max(
                     (local_bbox_corners[0] - local_bbox_corners[6]).length,
                     (local_bbox_corners[1] - local_bbox_corners[7]).length,
-                    (local_bbox_corners[2] - local_bbox_corners[4]).length)
+                    (local_bbox_corners[2] - local_bbox_corners[4]).length
+                )
 
                 # 计算需要的缩放系数来使物体恰好适合球体
                 # 使用直径的一半（半径）与球体半径比较
@@ -354,19 +356,19 @@ class BlenderRenderer:
                 obj.scale = (safe_scale, safe_scale, safe_scale)
 
                 # 将物体位置设回球体中心
-                obj.location = tuple(pos) 
+                obj.location = tuple(pos)
                 if not obj.data.materials:
                     material_name = "MyMaterial"  # 材质名称
                     material = bpy.data.materials.new(name=material_name)
                     # 设置材质的颜色
                     material.diffuse_color = (1.0, 0.0, 0.0, 1.0)
                     obj.data.materials.append(material)
-                
 
     def set_camera(self):
         # 设置相机
-        camera_match = re.search(r'camera\s*{([^}]*)}', self.pov_content,
-                                 re.DOTALL)
+        camera_match = re.search(
+            r'camera\s*{([^}]*)}', self.pov_content, re.DOTALL
+        )
         if camera_match:
             camera_text = camera_match.group(1)
 
@@ -386,7 +388,8 @@ class BlenderRenderer:
                 angle = float(angle_match.group(1))
                 # 转换 POV-Ray 角度为 Blender 焦距
                 bpy.data.cameras['Camera'].lens = 16 / math.tan(
-                    math.radians(angle / 2))
+                    math.radians(angle / 2)
+                )
 
             # 提取相机朝向
             look_at_match = re.search(r'look_at\s*<([^>]*)>', camera_text)
@@ -407,8 +410,9 @@ class BlenderRenderer:
 
     def set_light(self):
         # 设置光源
-        light_match = re.search(r'light_source\s*{([^}]*)}', self.pov_content,
-                                re.DOTALL)
+        light_match = re.search(
+            r'light_source\s*{([^}]*)}', self.pov_content, re.DOTALL
+        )
         if light_match:
             light_text = light_match.group(1)
 
@@ -426,32 +430,37 @@ class BlenderRenderer:
 
     def set_sphere(self):
         # 处理球体
-        sphere_matches = re.findall(r'sphere\s*{([^}]*)}', self.pov_content,
-                                    re.DOTALL)
+        sphere_matches = re.findall(
+            r'sphere\s*{([^}]*)}', self.pov_content, re.DOTALL
+        )
         for i, sphere_text in enumerate(sphere_matches):
             # 提取球体位置和半径
-            sphere_data_match = re.search(r'<([^>]*)>\s*,\s*([0-9.]+)',
-                                          sphere_text)
+            sphere_data_match = re.search(
+                r'<([^>]*)>\s*,\s*([0-9.]+)', sphere_text
+            )
             if sphere_data_match:
                 pos = map(float, sphere_data_match.group(1).split(','))
                 pos = self.coord_pov2blend(*pos)
                 radius = float(sphere_data_match.group(2))
 
                 # 创建球体
-                bpy.ops.mesh.primitive_uv_sphere_add(radius=radius,
-                                                     location=tuple(pos))
+                bpy.ops.mesh.primitive_uv_sphere_add(
+                    radius=radius, location=tuple(pos)
+                )
                 sphere = bpy.context.object
                 sphere.name = f"Sphere_{i}"
 
                 # 提取材质颜色
                 color_match = re.search(
-                    r'color\s*[a-zA-Z]+|color\s*rgb\s*<([^>]*)>', sphere_text)
+                    r'color\s*[a-zA-Z]+|color\s*rgb\s*<([^>]*)>', sphere_text
+                )
                 if color_match and color_match.group(1):
                     r, g, b = map(float, color_match.group(1).split(','))
 
                     # 创建材质
                     material = bpy.data.materials.new(
-                        name=f"SphereMaterial_{i}")
+                        name=f"SphereMaterial_{i}"
+                    )
                     material.use_nodes = True
                     bsdf = material.node_tree.nodes["Principled BSDF"]
                     bsdf.inputs["Base Color"].default_value = (r, g, b, 1)
@@ -464,18 +473,21 @@ class BlenderRenderer:
 
     def set_snake(self):
         # 处理球扫描（sphere_sweep）
-        sphere_sweep_matches = re.findall(r'sphere_sweep\s*{([^}]*)}',
-                                          self.pov_content, re.DOTALL)
+        sphere_sweep_matches = re.findall(
+            r'sphere_sweep\s*{([^}]*)}', self.pov_content, re.DOTALL
+        )
         for i, sweep_text in enumerate(sphere_sweep_matches):
             # 提取类型和点数
             header_match = re.search(
-                r'(linear_spline|cubic_spline|b_spline)\s*(\d+)', sweep_text)
+                r'(linear_spline|cubic_spline|b_spline)\s*(\d+)', sweep_text
+            )
             if header_match:
 
                 # 提取所有点和半径
                 points = []
-                point_matches = re.findall(r',<([^>]*)>\s*,\s*([0-9.e+-]+)',
-                                           sweep_text)
+                point_matches = re.findall(
+                    r',<([^>]*)>\s*,\s*([0-9.e+-]+)', sweep_text
+                )
                 for point_match in point_matches:
                     pos = tuple(map(float, point_match[0].split(',')))
                     pos = self.coord_pov2blend(*pos)
@@ -486,8 +498,8 @@ class BlenderRenderer:
                 curve_data = bpy.data.curves.new('SweepCurve', 'CURVE')
                 curve_data.dimensions = '3D'
                 curve_data.resolution_u = 12
-                curve_data.bevel_depth = 0.02#0.01  # 先设置一个小值，后面会根据每个点调整
-                
+                curve_data.bevel_depth = 0.02  #0.01  # 先设置一个小值，后面会根据每个点调整
+
                 # 创建样条
                 polyline = curve_data.splines.new('BEZIER')
                 polyline.bezier_points.add(len(points) - 1)
@@ -500,19 +512,22 @@ class BlenderRenderer:
                     polyline.bezier_points[idx].handle_right_type = 'AUTO'
 
                 # 创建曲线对象
-                curve_obj = bpy.data.objects.new('SphereSweep_' + str(i),
-                                                 curve_data)
+                curve_obj = bpy.data.objects.new(
+                    'SphereSweep_' + str(i), curve_data
+                )
                 bpy.context.collection.objects.link(curve_obj)
 
                 # 提取材质颜色
                 color_match = re.search(
-                    r'pigment\s*{\s*color\s*rgb\s*<([^>]*)>', sweep_text)
+                    r'pigment\s*{\s*color\s*rgb\s*<([^>]*)>', sweep_text
+                )
                 if color_match:
                     r, g, b = map(float, color_match.group(1).split(','))
 
                     # 创建材质
                     material = bpy.data.materials.new(
-                        name=f"SweepMaterial_{i}")
+                        name=f"SweepMaterial_{i}"
+                    )
                     material.use_nodes = True
                     bsdf = material.node_tree.nodes["Principled BSDF"]
                     bsdf.inputs["Base Color"].default_value = (r, g, b, 1)
@@ -526,7 +541,8 @@ class BlenderRenderer:
 
         bpy.ops.render.render()
         bpy.data.images["Render Result"].save_render(
-            f"renders/frame_000000.png")
+            f"renders/frame_000000.png"
+        )
 
 
 if __name__ == "__main__":

@@ -16,8 +16,16 @@ import bpy
 import elastica as ea
 import matplotlib.pyplot as plt
 import numpy as np
-from elastica import (BaseSystemCollection, CallBacks, Connections,
-                      Constraints, Contact, Damping, Forcing, PositionVerlet)
+from elastica import (
+    BaseSystemCollection,
+    CallBacks,
+    Connections,
+    Constraints,
+    Contact,
+    Damping,
+    Forcing,
+    PositionVerlet,
+)
 from elastica.timestepper import extend_stepper_interface
 from matplotlib import animation
 from tqdm import tqdm
@@ -30,21 +38,25 @@ from ..visualize.renderer import POVRayRenderer
 from ..visualize.visualizer import rod_objects_3d_visualize
 
 
-class BaseSimulator(BaseSystemCollection, Constraints, Connections, Forcing,
-                    Damping, Contact, CallBacks):
+class BaseSimulator(
+    BaseSystemCollection, Constraints, Connections, Forcing, Damping, Contact,
+    CallBacks
+):
     """Base simulator class combining Elastica functionalities."""
     pass
 
 
 class SimulatedEnvironment(ABC):
 
-    def __init__(self,
-                 *args,
-                 final_time: float,
-                 time_step: int,
-                 update_interval: int = 1,
-                 rendering_fps: int = 60,
-                 **kwargs):
+    def __init__(
+        self,
+        *args,
+        final_time: float,
+        time_step: int,
+        update_interval: int = 1,
+        rendering_fps: int = 60,
+        **kwargs
+    ):
 
         self.simulator = BaseSimulator()
 
@@ -82,7 +94,8 @@ class SimulatedEnvironment(ABC):
 
         # Prepare for time stepping
         self.do_step, self.stages_and_updates = extend_stepper_interface(
-            self.stateful_stepper, self.simulator)
+            self.stateful_stepper, self.simulator
+        )
 
 
 class SimulateMixin(SimulatedEnvironment):
@@ -90,13 +103,15 @@ class SimulateMixin(SimulatedEnvironment):
     Deprecated: Use SimulatedEnvironment instead.
     """
 
-    def __init__(self,
-                 *args,
-                 final_time: float,
-                 time_step: int,
-                 update_interval: int = 1,
-                 rendering_fps: int = 60,
-                 **kwargs):
+    def __init__(
+        self,
+        *args,
+        final_time: float,
+        time_step: int,
+        update_interval: int = 1,
+        rendering_fps: int = 60,
+        **kwargs
+    ):
 
         self.final_time = final_time
         self.time_step = time_step
@@ -124,7 +139,8 @@ class SimulateMixin(SimulatedEnvironment):
 
         # Prepare for time stepping
         self.do_step, self.stages_and_updates = extend_stepper_interface(
-            self.stateful_stepper, self.simulator)
+            self.stateful_stepper, self.simulator
+        )
 
 
 class RodMixin(SimulatedEnvironment):
@@ -163,7 +179,8 @@ class RodMixin(SimulatedEnvironment):
         self.simulator.collect_diagnostics(self.shearable_rod).using(
             RodCallBack,
             step_skip=step_skip,
-            callback_params=self.rod_callback)
+            callback_params=self.rod_callback
+        )
 
 
 class RigidMixin(SimulatedEnvironment):
@@ -186,11 +203,11 @@ class RigidMixin(SimulatedEnvironment):
         return sphere
 
     def add_mesh_surface(
-            self,
-            mesh_path: str,
-            center: np.ndarray = np.array([0., 0., 0.]),
-            scale: np.ndarray = np.array([1., 1., 1.]),
-            rotate: np.ndarray = np.array([0., 0., 0.]),
+        self,
+        mesh_path: str,
+        center: np.ndarray = np.array([0., 0., 0.]),
+        scale: np.ndarray = np.array([1., 1., 1.]),
+        rotate: np.ndarray = np.array([0., 0., 0.]),
     ) -> MeshSurface:
         mesh = MeshSurface(mesh_path)
         mesh.scale(scale)
@@ -230,11 +247,11 @@ class ObjectsMixin(RigidMixin):
         return sphere
 
     def add_mesh_surface(
-            self,
-            mesh_path: str,
-            center: np.ndarray = np.array([0., 0., 0.]),
-            scale: np.ndarray = np.array([1., 1., 1.]),
-            rotate: np.ndarray = np.array([0., 0., 0.]),
+        self,
+        mesh_path: str,
+        center: np.ndarray = np.array([0., 0., 0.]),
+        scale: np.ndarray = np.array([1., 1., 1.]),
+        rotate: np.ndarray = np.array([0., 0., 0.]),
     ) -> MeshSurface:
         mesh = super().add_mesh_surface(mesh_path, center, scale, rotate)
         self.objects.append(mesh)
@@ -262,7 +279,8 @@ class ObjectsMixin(RigidMixin):
                 )
             else:
                 raise ValueError(
-                    f"Unsupported object type: {type(object_config)}")
+                    f"Unsupported object type: {type(object_config)}"
+                )
 
     def _add_data_collection_callbacks(self, step_skip: int):
         for object_ in self.objects:
@@ -271,17 +289,20 @@ class ObjectsMixin(RigidMixin):
                     RigidBodyCallBack,
                     step_skip=step_skip,
                     callback_params=self.object_callbacks[
-                        self.object2id[object_]])
+                        self.object2id[object_]]
+                )
             elif isinstance(object_, MeshSurface):
                 self.simulator.collect_diagnostics(object_).using(
                     MeshSurfaceCallBack,
                     step_skip=step_skip,
                     callback_params=self.object_callbacks[
-                        self.object2id[object_]])
+                        self.object2id[object_]]
+                )
 
 
-class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
-                                     SimulatedEnvironment):
+class FetchableRodObjectsEnvironment(
+    RodMixin, ObjectsMixin, SimulatedEnvironment
+):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -312,11 +333,11 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
         pass
 
     def add_mesh_surface(
-            self,
-            mesh_path: str,
-            center: np.ndarray = np.array([0., 0., 0.]),
-            scale: np.ndarray = np.array([1., 1., 1.]),
-            rotate: np.ndarray = np.array([0., 0., 0.]),
+        self,
+        mesh_path: str,
+        center: np.ndarray = np.array([0., 0., 0.]),
+        scale: np.ndarray = np.array([1., 1., 1.]),
+        rotate: np.ndarray = np.array([0., 0., 0.]),
     ) -> MeshSurface:
         mesh = super().add_mesh_surface(mesh_path, center, scale, rotate)
 
@@ -338,14 +359,11 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
         """
 
         callback_data = {
-            "deciption":
-            "rod is the softrobot, whose callback is a dict of positions,"
+            "deciption": "rod is the softrobot, whose callback is a dict of positions,"
             "velocities... \nobjects is all spheres, whose callback is a list"
             "of each object's callback",
-            "rod_callback":
-            self.rod_callback,
-            "object_callbacks":
-            self.object_callbacks,
+            "rod_callback": self.rod_callback,
+            "object_callbacks": self.object_callbacks,
         }
 
         with open(filename, 'wb') as f:
@@ -392,9 +410,9 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
 
         print("plot video")
         FFMpegWriter = animation.writers["ffmpeg"]
-        metadata = dict(title="Movie Test",
-                        artist="Matplotlib",
-                        comment="Movie support!")
+        metadata = dict(
+            title="Movie Test", artist="Matplotlib", comment="Movie support!"
+        )
         writer = FFMpegWriter(fps=fps, metadata=metadata)
         fig = plt.figure(figsize=(10, 8), frameon=True, dpi=150)
         ax = fig.add_subplot(111)
@@ -402,8 +420,9 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
         ax.set_ylim(*ylim)
         ax.set_xlabel("z [m]", fontsize=16)
         ax.set_ylabel("x [m]", fontsize=16)
-        rod_lines_2d = ax.plot(positions_over_time[0][2],
-                               positions_over_time[0][0])[0]
+        rod_lines_2d = ax.plot(
+            positions_over_time[0][2], positions_over_time[0][0]
+        )[0]
 
         # 初始化一个变量来保存当前的圆形对象
         object_plots = [None for _ in range(len(self.objects))]
@@ -425,7 +444,8 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
                         center_y = object_positions[idx][time][0]
                         radius = obj.radius[0]
                         color = 'red' if target_last and idx == len(
-                            self.objects) - 1 else 'lightblue'
+                            self.objects
+                        ) - 1 else 'lightblue'
                         object_plots[idx] = plt.Circle((center_x, center_y),
                                                        radius,
                                                        edgecolor='b',
@@ -437,11 +457,11 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
                         center_x = object_positions[idx][time][2]
                         center_y = object_positions[idx][time][0]
                         color = 'red' if target_last and idx == len(
-                            self.objects) - 1 else 'lightblue'
-                        object_plots[idx] = ax.plot(center_x,
-                                                    center_y,
-                                                    'o',
-                                                    color=color)[0]
+                            self.objects
+                        ) - 1 else 'lightblue'
+                        object_plots[idx] = ax.plot(
+                            center_x, center_y, 'o', color=color
+                        )[0]
 
                 # 捕捉当前帧
                 writer.grab_frame()
@@ -548,10 +568,12 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
             width=width,
             height=height,
         )
-        
+
         frames = len(self.rod_callback['time'])
         for i in tqdm(range(frames), disable=False, desc="Rendering .povray"):
-            renderer.reset_stage(top_camera_position=[0, 15, 2], top_camera_look_at=[-2, 0, 2])
+            renderer.reset_stage(
+                top_camera_position=[0, 15, 2], top_camera_look_at=[-2, 0, 2]
+            )
             for object_ in self.objects:
                 id_ = self.object2id[object_]
                 object_callback = self.object_callbacks[id_]
@@ -582,14 +604,13 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
         blender_renderer.batch_rendering(top_view_dir, top_view_dir)
         renderer.create_video(only_top=True)
 
-    def single_step_3d_blend(        
+    def single_step_3d_blend(
         self,
         output_images_dir,
-        fps,
         width=960,
-        height=540, 
+        height=540,
         current_step=0,
-        interval=0
+        interval=0,
     ):
         if current_step % interval == 0:
             top_view_dir = os.path.join(output_images_dir, "top")
@@ -597,12 +618,13 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
 
             renderer = POVRayRenderer(
                 output_images_dir=output_images_dir,
-                fps=fps,
                 width=width,
                 height=height,
             )
 
-            renderer.reset_stage(top_camera_position=[0, 15, 2], top_camera_look_at=[-2, 0, 2])
+            renderer.reset_stage(
+                top_camera_position=[0, 15, 2], top_camera_look_at=[-2, 0, 2]
+            )
             for object_ in self.objects:
                 id_ = self.object2id[object_]
                 object_callback = self.object_callbacks[id_]
@@ -634,10 +656,9 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
                 save_img=False,
             )
 
-            blender_renderer.Single_step_rendering(current_step, top_view_dir, top_view_dir)
-        
-
-
+            blender_renderer.Single_step_rendering(
+                current_step, top_view_dir, top_view_dir
+            )
 
 
 # class RodObjectsEnvironment(SimulateMixin, RodObjectsMixin, ABC):
