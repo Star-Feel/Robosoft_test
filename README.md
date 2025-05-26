@@ -54,3 +54,16 @@ make;make install
 <div style="text-align: center;">
   <img src="videos/3d.gif" alt="Demo GIF" width="300"/>
 </div>
+
+## VLN Data Generate
+
+Run the following scripts steply
+
+```bash
+python scripts/navigation/main_data_gen_random_go.py
+python scripts/navigation/main_data_gen_obstacle_gen.py
+python scripts/navigation/main_data_gen_target_gen.py
+python scripts/navigation/main_data_gen_visual_gen.py
+python scripts/navigation/main_data_gen_full.py
+python scripts/navigation/main_data_gen_release.py
+```
