@@ -95,6 +95,7 @@ def main():
         info["config"] = osp.join(local_target_dir, "config.yaml")
         info["state_action"] = osp.join(local_random_dir, "state_action.pkl")
         info["viusal"] = osp.join(local_visual_dir, "visual")
+        info["actions"] = osp.join(local_random_dir, "actions.json")
         info["target_id"] = target_id
         info["description"] = desciprtion
 
