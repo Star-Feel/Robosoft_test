@@ -574,10 +574,10 @@ class FetchableRodObjectsEnvironment(
 
         x_min = min(list(point.center[0] for point in self.object_configs))
         y_min = min(list(point.center[2] for point in self.object_configs))
-        
+
         x_avg = (x_max + x_min) / 2
         y_avg = (y_max + y_min) / 2
- 
+
         frames = len(self.rod_callback['time'])
         for i in tqdm(range(frames), disable=False, desc="Rendering .povray"):
             renderer.reset_stage(top_camera_position=[x_avg, 10, y_avg], top_camera_look_at=[x_avg, 0, y_avg])
@@ -586,7 +586,7 @@ class FetchableRodObjectsEnvironment(
                 object_callback = self.object_callbacks[id_]
                 if isinstance(object_, ea.Sphere):
                     renderer.add_stage_object(
-                        object_type='sphere', 
+                        object_type='sphere',
                         name=f'sphere{id_}',
                         shape=str(self.object_configs[id_].shape),
                         position=np.squeeze(object_callback['position'][i]),
@@ -635,7 +635,8 @@ class FetchableRodObjectsEnvironment(
             )
 
             renderer.reset_stage(
-                top_camera_position=[0, 15, 2], top_camera_look_at=[-2, 0, 2]
+                top_camera_position=[-1.5, 10, 2],
+                top_camera_look_at=[-1.5, 0, 2]
             )
             for object_ in self.objects:
                 id_ = self.object2id[object_]
@@ -644,6 +645,7 @@ class FetchableRodObjectsEnvironment(
                     renderer.add_stage_object(
                         object_type='sphere',
                         name=f'sphere{id_}',
+                        shape=str(self.object_configs[id_].shape),
                         position=np.squeeze(object_callback['position'][0]),
                         radius=np.squeeze(object_callback['radius'][0]),
                     )
@@ -653,6 +655,7 @@ class FetchableRodObjectsEnvironment(
                         object_type='mesh',
                         name=f'mesh{id_}',
                         mesh_name='cube_mesh',
+                        shape=str(self.object_configs[id_].shape),
                         position=np.squeeze(object_callback['position'][0]),
                         scale=scale,
                         matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],

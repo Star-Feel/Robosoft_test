@@ -10,13 +10,15 @@ import itertools
 import numpy as np
 
 ASSET_PATHS = {
-    "Obj": "/data/wjs/wrp/SoftRoboticaSimulator/scene_assets/living_room/soccer/Obj.obj",
-    "Tea_Cup": "/data/wjs/wrp/SoftRoboticaSimulator/scene_assets/living_room/Tea_Cup/Tea_Cup.obj",
-    "BasketBall":"/data/wjs/wrp/SoftRoboticaSimulator/scene_assets/living_room/basketball/BasketBall.obj",
-    "Coffee_cup_withe_":"/data/wjs/wrp/SoftRoboticaSimulator/scene_assets/living_room/Coffee_cup_withe_obj/Coffee_cup_withe_.obj",
-    "pillows_obj":"/data/wjs/wrp/SoftRoboticaSimulator/scene_assets/living_room/OBJ_PILLOWS/pillows_obj.obj",
-    "Book_by_Peter_Iliev_obj":"/data/wjs/wrp/SoftRoboticaSimulator/scene_assets/living_room/Book_by_Peter_Iliev_obj/Book_by_Peter_Iliev_obj.obj",
+    "Obj": "./scene_assets/living_room/soccer/Obj.obj",
+    "Tea_Cup": "./scene_assets/living_room/Tea_Cup/Tea_Cup.obj",
+    "BasketBall": "./scene_assets/living_room/basketball/BasketBall.obj",
+    "Coffee_cup_withe_": "./scene_assets/living_room/Coffee_cup_withe_obj/Coffee_cup_withe_.obj",
+    "pillows_obj": "./scene_assets/living_room/OBJ_PILLOWS/pillows_obj.obj",
+    "Book_by_Peter_Iliev_obj": "./scene_assets/living_room/Book_by_Peter_Iliev_obj/Book_by_Peter_Iliev_obj.obj",
 }
+
+
 class BlenderRenderer:
 
     def __init__(self, output_dir="renders"):
@@ -255,7 +257,7 @@ class BlenderRenderer:
                         continue
                     else:
                         bpy.data.objects.remove(obj, do_unlink=True)
-                
+
             for idx, mesh_match in enumerate(mesh_matchs):
                 # obj_chosen = random.choice(obj_list)
 
@@ -264,13 +266,11 @@ class BlenderRenderer:
                 obj_path = ASSET_PATHS[shape]
 
                 bpy.ops.wm.obj_import(filepath=obj_path)
-                for idx, obj in enumerate(
-                        bpy.context.selected_objects):
+                for idx, obj in enumerate(bpy.context.selected_objects):
                     if idx == 0:
                         continue
                     else:
                         bpy.data.objects.remove(obj, do_unlink=True)
-
 
             bpy.ops.object.select_all(action='SELECT')
 
@@ -559,12 +559,16 @@ class BlenderRenderer:
                     bsdf.inputs["Base Color"].default_value = (r, g, b, 1)
 
                     # 创建材质输出节点
-                    material_output = nodes.new(type="ShaderNodeOutputMaterial")
+                    material_output = nodes.new(
+                        type="ShaderNodeOutputMaterial"
+                    )
 
                     # 连接节点
                     links.new(color_ramp.inputs[0], gradient_tex.outputs[0])
                     links.new(bsdf.inputs["Base Color"], color_ramp.outputs[0])
-                    links.new(material_output.inputs["Surface"], bsdf.outputs[0])
+                    links.new(
+                        material_output.inputs["Surface"], bsdf.outputs[0]
+                    )
 
                     # 将材质应用到曲线对象
                     curve_obj.data.materials.append(material)
@@ -574,7 +578,9 @@ class BlenderRenderer:
                     gradient_tex.outputs['Object'].default_value = (0, 0, 1)
 
                     # 连接渐变纹理节点到颜色渐变节点
-                    links.new(color_ramp.inputs[0], gradient_tex.outputs['Object'])
+                    links.new(
+                        color_ramp.inputs[0], gradient_tex.outputs['Object']
+                    )
 
     def render(self):
         bpy.context.scene.camera = bpy.data.objects['Camera']
