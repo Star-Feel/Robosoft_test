@@ -145,6 +145,7 @@ class RodControllerArgumets:
 
 @dataclass
 class SphereArguments:
+    shape: str = ""
     center: np.ndarray = field(default_factory=list)
     radius: float = field(default_factory=float)
     density: float = field(default_factory=float)
@@ -170,8 +171,8 @@ class RodArguments:
 
 @dataclass
 class MeshSurfaceArguments:
-
-    mesh_path: str
+    shape:str = ""
+    mesh_path: str = ""
     center: np.ndarray = field(default_factory=lambda: np.array([0., 0., 0.]))
     scale: np.ndarray = field(default_factory=lambda: np.array([1., 1., 1.]))
     rotate: np.ndarray = field(default_factory=lambda: np.array([0., 0., 0.]))

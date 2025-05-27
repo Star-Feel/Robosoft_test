@@ -9,6 +9,7 @@ __all__ = [
     "SimulatedEnvironment",
 ]
 
+import os
 import pickle
 from abc import ABC, abstractmethod
 from typing import Optional
@@ -17,6 +18,8 @@ import gym
 from gym import spaces
 import matplotlib.pyplot as plt
 import numpy as np
+import bpy
+
 from elastica import (BaseSystemCollection, CallBacks, Connections,
                       Constraints, Contact, Damping, Forcing, PositionVerlet)
 from elastica.timestepper import extend_stepper_interface
@@ -27,6 +30,8 @@ from ..components import MeshSurface, RigidBodyCallBack, RodCallBack
 from ..components.callback import MeshSurfaceCallBack
 from ..visualize.visualizer import rod_objects_3d_visualize
 from ..utils import compute_rotation_matrix
+from ..visualize.pov2blend import BlenderRenderer
+from ..visualize.renderer import POVRayRenderer
 
 
 class BaseSimulator(BaseSystemCollection, Constraints, Connections, Forcing,
@@ -413,6 +418,118 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
             ylim,
             zlim,
         )
+
+    def visualize_3d_blender(
+        self,
+        video_name,
+        output_images_dir,
+        fps,
+        width=960,
+        height=540,
+        target_id=0,
+    ):
+        top_view_dir = os.path.join(output_images_dir, "top")
+        blender_renderer = BlenderRenderer(top_view_dir)
+
+        renderer = POVRayRenderer(
+            output_filename=video_name,
+            output_images_dir=output_images_dir,
+            fps=fps,
+            width=width,
+            height=height,
+        )
+
+        # refine camera setting
+        
+        frames = len(self.rod_callback['time'])
+        for i in tqdm(range(frames), disable=False, desc="Rendering .povray"):
+            renderer.reset_stage(top_camera_position=[-4, -4, 0], top_camera_look_at=[0, 0, 1])
+            for object_ in self.objects:
+                id_ = self.object2id[object_]
+                object_callback = self.object_callbacks[id_]
+                if isinstance(object_, ea.Sphere):
+                    renderer.add_stage_object(
+                        object_type='sphere',
+                        name=f'sphere{id_}',
+                        shape=str(self.object_configs[id_].shape),
+                        position=np.squeeze(object_callback['position'][i]),
+                        radius=np.squeeze(object_callback['radius'][i]),
+                    )
+                elif isinstance(object_, MeshSurface):
+                    scale = np.mean(object_.mesh_scale)
+                    renderer.add_stage_object(
+                        object_type='mesh',
+                        name=f'mesh{id_}',
+                        shape=str(self.object_configs[id_].shape),
+                        mesh_name='cube_mesh',
+                        position=np.squeeze(object_callback['position'][i]),
+                        scale=scale,  # TODO
+                        matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
+                    )
+            renderer.render_single_step(
+                data={
+                    "rod_position": self.rod_callback["position"][i],
+                    "rod_radius": self.rod_callback["radius"][i],
+                },
+                save_img=False,
+            )
+
+        blender_renderer.batch_rendering(top_view_dir, top_view_dir, target_id)
+        renderer.create_video(only_top=True)
+
+    def single_step_3d_blend(        
+        self,
+        output_images_dir,
+        fps,
+        width=960,
+        height=540, 
+        current_step=0,
+        interval=0
+    ):
+        if current_step % interval == 0:
+            top_view_dir = os.path.join(output_images_dir, "top")
+            blender_renderer = BlenderRenderer(top_view_dir)
+
+            renderer = POVRayRenderer(
+                output_images_dir=output_images_dir,
+                fps=fps,
+                width=width,
+                height=height,
+            )
+
+            renderer.reset_stage(top_camera_position=[0, 15, 2], top_camera_look_at=[-2, 0, 2])
+            for object_ in self.objects:
+                id_ = self.object2id[object_]
+                object_callback = self.object_callbacks[id_]
+                if isinstance(object_, ea.Sphere):
+                    renderer.add_stage_object(
+                        object_type='sphere',
+                        name=f'sphere{id_}',
+                        position=np.squeeze(object_callback['position'][0]),
+                        radius=np.squeeze(object_callback['radius'][0]),
+                    )
+                elif isinstance(object_, MeshSurface):
+                    renderer.add_stage_object(
+                        object_type='mesh',
+                        name=f'mesh{id_}',
+                        mesh_name='cube_mesh',
+                        position=np.squeeze(object_callback['position'][0]),
+                        scale=1,  # TODO
+                        matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
+                    )
+
+            # print(self.shearable_rod.position_collection)
+            # print(self.shearable_rod.radius)
+
+            renderer.render_single_step(
+                data={
+                    "rod_position": self.shearable_rod.position_collection,
+                    "rod_radius": self.shearable_rod.radius,
+                },
+                save_img=False,
+            )
+
+            blender_renderer.Single_step_rendering(current_step, top_view_dir, top_view_dir)
 
 
 class RodSphereEnvironment(RodMixin, RigidMixin, SimulatedEnvironment):
