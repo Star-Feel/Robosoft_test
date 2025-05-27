@@ -136,10 +136,9 @@ def main():
         blend_mesh_target_name = None
 
         # 确定target信息
-        if spheres[target_id]["type"] == "sphere":
-            sphere_target_name, sphere_target_path, _ = get_random_sphere(assets)
+        if np.random.rand() < 1 / 2:
+            sphere_target_name, _, _ = get_random_sphere(assets)
             sphere_target_dict = copy.deepcopy(SPHERE_TEMP)
-            # sphere_target_dict["blend_sphere_path"] = sphere_target_path
             sphere_target_dict["shape"] = sphere_target_name
             sphere_target_dict["density"] = spheres[target_id]['density']
             sphere_target_dict["center"] = spheres[target_id]['center']
@@ -154,7 +153,6 @@ def main():
             blend_mesh_target_name, blend_mesh_target_path, _ = get_random_mesh(assets)
             mesh_target_dict = copy.deepcopy(MESH_TEMP)
             mesh_target_dict["mesh_path"] = mesh_target_path
-            # mesh_target_dict["blend_mesh_path"] = blend_mesh_target_path
             mesh_target_dict["shape"] = blend_mesh_target_name
             mesh_target_dict["center"] = center
             mesh_target_dict["scale"] = [round(2 * radius / mesh_target_span, 3)] * 3 
@@ -169,7 +167,6 @@ def main():
             
                 sphere_name, sphere_path, sphere_span = get_random_sphere(assets, sphere_target_name)
                 sphere_dict = copy.deepcopy(SPHERE_TEMP)
-                # sphere_dict["blend_sphere_path"] = sphere_path
                 sphere_dict["shape"] = sphere_name
                 sphere_dict["density"] = sphere['density']
                 sphere_dict["center"] = sphere['center']
@@ -186,7 +183,6 @@ def main():
                 blend_mesh_name, blend_mesh_path, _ = get_random_mesh(assets, blend_mesh_target_name)
                 mesh_dict = copy.deepcopy(MESH_TEMP)
                 mesh_dict["mesh_path"] = mesh_path
-                # mesh_dict["blend_mesh_path"] = blend_mesh_path
                 mesh_dict["shape"] = blend_mesh_name
                 mesh_dict["center"] = center
                 mesh_dict["scale"] = [round(2 * radius / mesh_span, 3)] * 3
