@@ -551,7 +551,7 @@ class BlenderRenderer:
 
                     # 创建颜色渐变节点
                     color_ramp = nodes.new(type="ShaderNodeValToRGB")
-                    color_ramp.color_ramp.elements[0].color = (0, 0, 0, 1)  # 黑色
+                    color_ramp.color_ramp.elements[0].color = (0, 0, 1, 1)  # 黑色
                     color_ramp.color_ramp.elements[1].color = (r, g, b, 1)  # 其他颜色
 
                     # 创建 Principled BSDF 节点
@@ -571,7 +571,7 @@ class BlenderRenderer:
 
                     # 创建一个渐变纹理节点来控制颜色变化
                     gradient_tex = nodes.new(type="ShaderNodeTexCoord")
-                    gradient_tex.outputs['Object'].default_value = (0, 0, 0)
+                    gradient_tex.outputs['Object'].default_value = (0, 0, 1)
 
                     # 连接渐变纹理节点到颜色渐变节点
                     links.new(color_ramp.inputs[0], gradient_tex.outputs['Object'])
