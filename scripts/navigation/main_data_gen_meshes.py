@@ -12,16 +12,18 @@ sys.path.append("/data/wjs/wrp/SoftRoboticaSimulator")
 
 from ssim.utils import load_yaml, save_yaml, load_json
 
-N = 1
+N = 100
 
-# FULL_DIR = "./work_dirs/navigation_data/full"
-# TARGET_DIR = "./work_dirs/navigation_data/full"
-# ASSETS_DIR = "./assets"
+FULL_DIR = "./work_dirs/navigation_data/full"
+TARGET_DIR = "./work_dirs/navigation_data/full"
+BASE_ASSETS_DIR = "./assets"
+ASSETS_DIR = "./scene_assets/living_room"
 
-FULL_DIR = "/data/wjs/wrp/SoftRoboticaSimulator/test/full"
-TARGET_DIR = "/data/wjs/wrp/SoftRoboticaSimulator/test/full"
-BASE_ASSETS_DIR = "/data/wjs/wrp/SoftRoboticaSimulator/assets"
-ASSETS_DIR = "/data/wjs/wrp/SoftRoboticaSimulator/scene_assets/living_room"
+# FULL_DIR = "/data/wjs/wrp/SoftRoboticaSimulator/test/full"
+# TARGET_DIR = "/data/wjs/wrp/SoftRoboticaSimulator/test/full"
+# BASE_ASSETS_DIR = "/data/wjs/wrp/SoftRoboticaSimulator/assets"
+# ASSETS_DIR = "/data/wjs/wrp/SoftRoboticaSimulator/scene_assets/living_room"
+
 
 class ASSET(TypedDict):
     path: str
@@ -45,6 +47,7 @@ SPHERE_TEMP = {
     "shape": "",
 }
 
+
 def get_base_assets_with_bounding_boxes():
     assets = {}
     for root, _, files in os.walk(BASE_ASSETS_DIR):
@@ -60,7 +63,7 @@ def get_base_assets_with_bounding_boxes():
 
                 # Map asset name to its path and bounding box
                 assets[asset_name] = ASSET(path=asset_path, bbox=bounding_box)
-            
+
     return assets
 
 
@@ -86,15 +89,17 @@ def get_assets_with_bounding_boxes():
 
                 # Load the mesh and compute the bounding box
                 mesh = trimesh.load(asset_path)
-                bounding_box = mesh.bounds.tolist()  # Store as a list for JSON compatibility
+                bounding_box = mesh.bounds.tolist(
+                )  # Store as a list for JSON compatibility
 
                 # Map asset name to its path and bounding box
                 assets[asset_name] = ASSET(path=asset_path, bbox=bounding_box)
-            
+
     return assets
 
 
-def get_random_mesh(assets: dict[ASSET], name: str = None) -> tuple[str, str, float]:
+def get_random_mesh(assets: dict[ASSET],
+                    name: str = None) -> tuple[str, str, float]:
     name_list = list(set(assets.keys()) - set(["Obj", "BasketBall"]))
     if name:
         name_list.remove(name)
@@ -105,7 +110,8 @@ def get_random_mesh(assets: dict[ASSET], name: str = None) -> tuple[str, str, fl
     return str(mesh_name), mesh_path, mesh_span
 
 
-def get_random_sphere(assets: dict[ASSET], name: str = None) -> tuple[str, str, float]:
+def get_random_sphere(assets: dict[ASSET],
+                      name: str = None) -> tuple[str, str, float]:
     name_list = list(["Obj", "BasketBall"])
     if name:
         name_list.remove(name)
@@ -120,7 +126,7 @@ def main():
     for i in tqdm(range(N)):
         local_full_dir = osp.join(FULL_DIR, f"{i}")
         local_target_dir = osp.join(TARGET_DIR, f"{i}")
-        
+
         os.makedirs(local_target_dir, exist_ok=True)
 
         base_assets = get_base_assets_with_bounding_boxes()
@@ -144,18 +150,24 @@ def main():
             sphere_target_dict["center"] = spheres[target_id]['center']
             sphere_target_dict["radius"] = spheres[target_id]['radius']
             spheres[target_id] = sphere_target_dict
-            
+
         else:
             center = spheres[target_id]["center"]
             radius = spheres[target_id]["radius"]
 
-            _, mesh_target_path, mesh_target_span = get_random_mesh(base_assets)
-            blend_mesh_target_name, blend_mesh_target_path, _ = get_random_mesh(assets)
+            _, mesh_target_path, mesh_target_span = get_random_mesh(
+                base_assets
+            )
+            blend_mesh_target_name, blend_mesh_target_path, _ = get_random_mesh(
+                assets
+            )
             mesh_target_dict = copy.deepcopy(MESH_TEMP)
             mesh_target_dict["mesh_path"] = mesh_target_path
             mesh_target_dict["shape"] = blend_mesh_target_name
             mesh_target_dict["center"] = center
-            mesh_target_dict["scale"] = [round(2 * radius / mesh_target_span, 3)] * 3 
+            mesh_target_dict["scale"] = [
+                round(2 * radius / mesh_target_span, 3)
+            ] * 3
             spheres[target_id] = mesh_target_dict
 
         # 确定除target外的物体信息
@@ -164,8 +176,10 @@ def main():
                 continue
             sphere = spheres[j]
             if np.random.rand() < 1 / 3:
-            
-                sphere_name, sphere_path, sphere_span = get_random_sphere(assets, sphere_target_name)
+
+                sphere_name, sphere_path, sphere_span = get_random_sphere(
+                    assets, sphere_target_name
+                )
                 sphere_dict = copy.deepcopy(SPHERE_TEMP)
                 sphere_dict["shape"] = sphere_name
                 sphere_dict["density"] = sphere['density']
@@ -180,7 +194,9 @@ def main():
                 radius = sphere["radius"]
 
                 _, mesh_path, mesh_span = get_random_mesh(base_assets)
-                blend_mesh_name, blend_mesh_path, _ = get_random_mesh(assets, blend_mesh_target_name)
+                blend_mesh_name, blend_mesh_path, _ = get_random_mesh(
+                    assets, blend_mesh_target_name
+                )
                 mesh_dict = copy.deepcopy(MESH_TEMP)
                 mesh_dict["mesh_path"] = mesh_path
                 mesh_dict["shape"] = blend_mesh_name
