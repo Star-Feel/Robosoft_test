@@ -7,6 +7,7 @@ import tqdm
 import random
 import mathutils
 import itertools
+import numpy as np
 
 
 class BlenderRenderer:
@@ -151,35 +152,58 @@ class BlenderRenderer:
             f"批量渲染完成，总用时: {total_time:.2f}秒，平均每帧: {total_time/len(pov_files):.2f}秒"
         )
 
-    def Single_step_rendering(self, current_step, pov_dir, output_dir):
+    def single_step_rendering(
+        self,
+        current_step: int,
+        pov_script: dict[str, str],
+        output_dir: str,
+        save_img: bool = True,
+    ) -> np.ndarray:
 
         os.makedirs(output_dir, exist_ok=True)
 
-        pov_file = os.path.join(pov_dir, "frame_00000.pov")
-
         # 加载文件来设置相机、光源和静态对象
-        self.load_pov_settings(pov_file)
+        self.load_pov_settings(None, pov_script)
 
         # 只更新蛇的部分，保留相机和其他静态物体
-        self.update_snake_only(pov_file)
+        self.update_snake_only(None, pov_script)
 
         # 渲染当前帧
         bpy.context.scene.frame_set(current_step)
         bpy.ops.render.render()
 
-        # 保存渲染结果
-        output_file = os.path.join(output_dir, f"step_{current_step:05d}.png")
-        bpy.data.images["Render Result"].save_render(output_file)
+        render_result = bpy.data.images["Render Result"]
+        if save_img:
+            output_file = os.path.join(
+                output_dir, f"step_{current_step:05d}.png"
+            )
+            render_result.save_render(output_file)
 
-    def update_snake_only(self, pov_file):
+        # pixels = np.array(render_result.pixels[:], dtype=np.float32)
+        # width, height = render_result.size
+        # numpy_array = pixels.reshape(height, width, 4)
+        # return numpy_array
+
+    def load_pov_content(self, pov_file=None, pov_script=None):
+        assert pov_file or pov_script, "必须提供 POV 文件或脚本内容"
+        if pov_script is not None:
+            self.pov_content = pov_script
+        elif pov_file is not None:
+            self.pov_file = pov_file
+            with open(pov_file, 'r') as file:
+                self.pov_content = file.read()
+
+    def update_snake_only(
+        self,
+        pov_file=None,
+        pov_script=None,
+    ):
         """只更新蛇的部分，保留其他场景元素不变。
 
         Args:
             pov_file (str): POV 文件路径
         """
-        # 读取新的 POV 文件内容
-        with open(pov_file, 'r') as file:
-            self.pov_content = file.read()
+        self.load_pov_content(pov_file, pov_script)
 
         # 删除所有现有的蛇对象
         for obj in bpy.data.objects:
@@ -189,11 +213,13 @@ class BlenderRenderer:
         # 重新创建蛇
         self.set_snake()
 
-    def load_pov_settings(self, pov_file, obj_path=None):
-        self.pov_file = pov_file
-        with open(pov_file, 'r') as file:
-            self.pov_content = file.read()
-
+    def load_pov_settings(
+        self,
+        pov_file=None,
+        pov_script=None,
+        obj_path=None,
+    ):
+        self.load_pov_content(pov_file, pov_script)
         self.set_camera()
         # self.set_light()
         self.load_obj(obj_path)
@@ -543,24 +569,3 @@ class BlenderRenderer:
         bpy.data.images["Render Result"].save_render(
             f"renders/frame_000000.png"
         )
-
-
-if __name__ == "__main__":
-    # POV 文件路径
-    import time
-    pov_dir = "/data/wjs/wrp/SoftRoboticaSimulator/work_dirs/povray_continuum_snake/diag"
-    pov_file = "/data/wjs/wrp/SoftRoboticaSimulator/work_dirs/povray_continuum_snake/diag/frame_00000.pov"
-    # obj_path = "/data/wjs/wrp/SoftRoboticaSimulator/assets/lamed_chair/Lamed_chair.obj"
-    # obj_path = "/data/wjs/wrp/SoftRoboticaSimulator/assets/basketball/BasketBall.obj"
-    out_dir = "/data/wjs/wrp/SoftRoboticaSimulator/renders"
-
-    pov_settings = BlenderRenderer()
-    start_time = time.time()
-    # pov_settings.load_pov_settings(pov_file, obj_path)\
-    pov_settings.batch_rendering(pov_dir, out_dir)
-
-    s_time = time.time()
-    print("render time: ", time.time() - s_time)
-
-    end_time = time.time()
-    print(f"运行时间: {end_time - start_time:.2f}秒")

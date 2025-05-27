@@ -598,6 +598,7 @@ class FetchableRodObjectsEnvironment(
                     "rod_position": self.rod_callback["position"][i],
                     "rod_radius": self.rod_callback["radius"][i],
                 },
+                save_script_file=True,
                 save_img=False,
             )
 
@@ -606,12 +607,13 @@ class FetchableRodObjectsEnvironment(
 
     def single_step_3d_blend(
         self,
-        output_images_dir,
-        width=960,
-        height=540,
-        current_step=0,
-        interval=0,
-    ):
+        width: int = 960,
+        height: int = 540,
+        current_step: int = 0,
+        interval: int = 1,
+        save_img: bool = False,
+        output_images_dir: str = ""
+    ) -> np.ndarray:
         if current_step % interval == 0:
             top_view_dir = os.path.join(output_images_dir, "top")
             blender_renderer = BlenderRenderer(top_view_dir)
@@ -636,19 +638,17 @@ class FetchableRodObjectsEnvironment(
                         radius=np.squeeze(object_callback['radius'][0]),
                     )
                 elif isinstance(object_, MeshSurface):
+                    scale = np.mean(object_.mesh_scale)
                     renderer.add_stage_object(
                         object_type='mesh',
                         name=f'mesh{id_}',
                         mesh_name='cube_mesh',
                         position=np.squeeze(object_callback['position'][0]),
-                        scale=1,  # TODO
+                        scale=scale,
                         matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
                     )
 
-            # print(self.shearable_rod.position_collection)
-            # print(self.shearable_rod.radius)
-
-            renderer.render_single_step(
+            pov_scripts = renderer.render_single_step(
                 data={
                     "rod_position": self.shearable_rod.position_collection,
                     "rod_radius": self.shearable_rod.radius,
@@ -656,9 +656,13 @@ class FetchableRodObjectsEnvironment(
                 save_img=False,
             )
 
-            blender_renderer.Single_step_rendering(
-                current_step, top_view_dir, top_view_dir
+            rendered_image = blender_renderer.single_step_rendering(
+                current_step,
+                pov_scripts["top"],
+                top_view_dir,
+                save_img,
             )
+            # return rendered_image
 
 
 # class RodObjectsEnvironment(SimulateMixin, RodObjectsMixin, ABC):

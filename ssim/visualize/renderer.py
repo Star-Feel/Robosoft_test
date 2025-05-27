@@ -95,7 +95,12 @@ class POVRayRenderer:
             look_at=head + direction * head_radius * 2,
         )
 
-    def render_single_step(self, data: dict, save_img=False) -> int:
+    def render_single_step(
+        self,
+        data: dict,
+        save_script_file: bool = False,
+        save_img: bool = False,
+    ) -> dict[str, str]:
         # Convert data to numpy array
         xs = np.array(data["rod_position"])  # shape: (3, num_element)
 
@@ -111,6 +116,7 @@ class POVRayRenderer:
         self.fpv_update(xs, rod_radius)
         _stage_scripts = self._stages.generate_scripts()
 
+        pov_scripts = {}
         # Make Directory for each camera
         for view_name, stage_script in _stage_scripts.items():
             output_path = os.path.join(self._output_images_dir, view_name)
@@ -123,20 +129,20 @@ class POVRayRenderer:
 
             script.append(rod_object)
             pov_script = "\n".join(script)
-
-            # Write .pov script file
-            file_path = os.path.join(
-                output_path, "frame_{:05d}".format(self._current_frame)
-            )
-            with open(file_path + ".pov", "w+") as f:
-                f.write(pov_script)
-            self._batch.append(file_path)
+            pov_scripts[view_name] = pov_script
+            if save_script_file:
+                file_path = os.path.join(
+                    output_path, "frame_{:05d}".format(self._current_frame)
+                )
+                with open(file_path + ".pov", "w+") as f:
+                    f.write(pov_script)
+                self._batch.append(file_path)
 
         if save_img:
             # self.process_povray(self._batch[-2:])
             self.process_povray(self._batch[1])
         self._current_frame += 1
-        return self._current_frame - 1
+        return pov_scripts
 
     def process_povray(
         self,
