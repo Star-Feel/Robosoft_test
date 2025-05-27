@@ -9,7 +9,14 @@ import mathutils
 import itertools
 import numpy as np
 
-
+ASSET_PATHS = {
+    "Obj": "/data/wjs/wrp/SoftRoboticaSimulator/scene_assets/living_room/soccer/Obj.obj",
+    "Tea_Cup": "/data/wjs/wrp/SoftRoboticaSimulator/scene_assets/living_room/Tea_Cup/Tea_Cup.obj",
+    "BasketBall":"/data/wjs/wrp/SoftRoboticaSimulator/scene_assets/living_room/basketball/BasketBall.obj",
+    "Coffee_cup_withe_":"/data/wjs/wrp/SoftRoboticaSimulator/scene_assets/living_room/Coffee_cup_withe_obj/Coffee_cup_withe_.obj",
+    "pillows_obj":"/data/wjs/wrp/SoftRoboticaSimulator/scene_assets/living_room/OBJ_PILLOWS/pillows_obj.obj",
+    "Book_by_Peter_Iliev_obj":"/data/wjs/wrp/SoftRoboticaSimulator/scene_assets/living_room/Book_by_Peter_Iliev_obj/Book_by_Peter_Iliev_obj.obj",
+}
 class BlenderRenderer:
 
     def __init__(self, output_dir="renders"):
@@ -235,62 +242,37 @@ class BlenderRenderer:
         )
 
         if obj_path is None:
-            # assets_path  = "/data/wjs/wrp/SoftRoboticaSimulator/assets"
-            assets_path = "./scene_assets/living_room"
-            obj_list = os.listdir(assets_path)
 
-            sphere_list = itertools.cycle(["soccer", "basketball"])
-            for idx in range(len(sphere_matchs)):
-                # obj_chosen = random.choice(obj_list)
-                obj_chosen = next(sphere_list)
-                file_list = os.listdir(os.path.join(assets_path, obj_chosen))
-                for file in file_list:
-                    if file.endswith('.obj'):
-                        obj_path = os.path.join(assets_path, obj_chosen, file)
-                        bpy.ops.wm.obj_import(filepath=obj_path)
-                        for idx, obj in enumerate(
-                            bpy.context.selected_objects
-                        ):
-                            if idx == 0:
-                                continue
-                            else:
-                                bpy.data.objects.remove(obj, do_unlink=True)
-                        break
+            for idx, sphere_match in enumerate(sphere_matchs):
 
-            obj_list = itertools.cycle([
-                x for x in obj_list if x not in ["soccer", "basketball"]
-            ])
-            for idx in range(len(mesh_matchs)):
+                shape_match = re.search(r'shape\s+([^\s>]+)', sphere_match)
+                shape = shape_match.group(1)
+                obj_path = ASSET_PATHS[shape]
+
+                bpy.ops.wm.obj_import(filepath=obj_path)
+                for idx, obj in enumerate(bpy.context.selected_objects):
+                    if idx == 0:
+                        continue
+                    else:
+                        bpy.data.objects.remove(obj, do_unlink=True)
+                
+            for idx, mesh_match in enumerate(mesh_matchs):
                 # obj_chosen = random.choice(obj_list)
 
-                obj_chosen = next(obj_list)
+                mesh_shape = re.search(r'shape\s+([^\s>]+)', mesh_match)
+                shape = mesh_shape.group(1)
+                obj_path = ASSET_PATHS[shape]
 
-                # obj_chosen = "Tea_Cup"
-                file_list = os.listdir(os.path.join(assets_path, obj_chosen))
-                for file in file_list:
-                    if file.endswith('.obj'):
-                        obj_path = os.path.join(assets_path, obj_chosen, file)
-                        bpy.ops.wm.obj_import(filepath=obj_path)
-                        for idx, obj in enumerate(
-                            bpy.context.selected_objects
-                        ):
-                            if idx == 0:
-                                continue
-                            else:
-                                bpy.data.objects.remove(obj, do_unlink=True)
-                        break
+                bpy.ops.wm.obj_import(filepath=obj_path)
+                for idx, obj in enumerate(
+                        bpy.context.selected_objects):
+                    if idx == 0:
+                        continue
+                    else:
+                        bpy.data.objects.remove(obj, do_unlink=True)
+
 
             bpy.ops.object.select_all(action='SELECT')
-
-        # bpy.ops.wm.obj_import(filepath=obj_path)
-        # 放置在球体对应位置，并设置材质
-        # sphere_matchs = re.findall(r'sphere\s*{([^}]*)}', self.pov_content, re.DOTALL)[0]
-        # sphere_matchs = re.findall(r'sphere\s*{([^}]*)}', self.pov_content, re.DOTALL)
-
-        # sphere_assets_path  = "/data/wjs/wrp/SoftRoboticaSimulator/assets"
-        # sphere_obj_list = os.listdir(sphere_assets_path)
-        # obj_chosen = random.choice(sphere_obj_list)
-        # file_list = os.listdir(os.path.join(sphere_assets_path, obj_chosen))
 
         for idx, sphere_match in enumerate(sphere_matchs):
             sphere_data_match = re.search(
@@ -323,7 +305,7 @@ class BlenderRenderer:
 
                 # 应用缩放（略微减小以确保不会超出）
                 # 0.95是安全系数，可以根据需要调整
-                safe_scale = scale_factor * 0.95
+                safe_scale = scale_factor * 1.8
                 obj.scale = (safe_scale, safe_scale, safe_scale)
 
                 # 将物体位置设回球体中心
@@ -378,7 +360,7 @@ class BlenderRenderer:
 
                 # 应用缩放（略微减小以确保不会超出）
                 # 0.95是安全系数，可以根据需要调整
-                safe_scale = scale_factor * 0.25
+                safe_scale = scale_factor * 0.9
                 obj.scale = (safe_scale, safe_scale, safe_scale)
 
                 # 将物体位置设回球体中心
@@ -555,11 +537,44 @@ class BlenderRenderer:
                         name=f"SweepMaterial_{i}"
                     )
                     material.use_nodes = True
-                    bsdf = material.node_tree.nodes["Principled BSDF"]
+
+                    nodes = material.node_tree.nodes
+                    links = material.node_tree.links
+
+                    # 清除默认节点
+                    for node in nodes:
+                        nodes.remove(node)
+
+                    # 创建渐变纹理节点
+                    gradient_tex = nodes.new(type="ShaderNodeTexGradient")
+                    gradient_tex.gradient_type = 'QUADRATIC'
+
+                    # 创建颜色渐变节点
+                    color_ramp = nodes.new(type="ShaderNodeValToRGB")
+                    color_ramp.color_ramp.elements[0].color = (0, 0, 0, 1)  # 黑色
+                    color_ramp.color_ramp.elements[1].color = (r, g, b, 1)  # 其他颜色
+
+                    # 创建 Principled BSDF 节点
+                    bsdf = nodes.new(type="ShaderNodeBsdfPrincipled")
                     bsdf.inputs["Base Color"].default_value = (r, g, b, 1)
 
-                    # 指定材质
+                    # 创建材质输出节点
+                    material_output = nodes.new(type="ShaderNodeOutputMaterial")
+
+                    # 连接节点
+                    links.new(color_ramp.inputs[0], gradient_tex.outputs[0])
+                    links.new(bsdf.inputs["Base Color"], color_ramp.outputs[0])
+                    links.new(material_output.inputs["Surface"], bsdf.outputs[0])
+
+                    # 将材质应用到曲线对象
                     curve_obj.data.materials.append(material)
+
+                    # 创建一个渐变纹理节点来控制颜色变化
+                    gradient_tex = nodes.new(type="ShaderNodeTexCoord")
+                    gradient_tex.outputs['Object'].default_value = (0, 0, 0)
+
+                    # 连接渐变纹理节点到颜色渐变节点
+                    links.new(color_ramp.inputs[0], gradient_tex.outputs['Object'])
 
     def render(self):
         bpy.context.scene.camera = bpy.data.objects['Camera']

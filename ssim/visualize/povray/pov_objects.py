@@ -173,10 +173,11 @@ class Box(StageObject):
 
 class Sphere(StageObject):
 
-    def __init__(self, position, radius, color='Yellow'):
+    def __init__(self, position, radius, shape, color='Yellow'):
         self.position = position
         self.radius = radius
         self.color = color
+        self.shape = shape
         super().__init__()
 
     def update_script(self):
@@ -187,6 +188,7 @@ class Sphere(StageObject):
         cmds.append("\ttexture {")
         cmds.append("\t\tpigment {")
         cmds.append(f"\t\t\tcolor {self.color}")
+        cmds.append(f"\t\t\tshape {self.shape}")
         cmds.append("\t\t}")
         cmds.append("\t}")
         cmds.append("}")
@@ -200,12 +202,14 @@ class MeshObject(StageObject):
         mesh_name,
         position,
         scale,
+        shape,
         matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
     ):
         self.mesh_name = mesh_name
         self.position = position
         self.matrix = matrix
         self.scale = scale
+        self.shape = shape
         super().__init__()
 
     def update_script(self):
@@ -217,5 +221,6 @@ class MeshObject(StageObject):
         cmds.append(f"\tscale {self.scale}")
         cmds.append(f"\tmatrix {matrix}")
         cmds.append(f"\ttranslate {position}")
+        cmds.append(f"\tshape {self.shape}")
         cmds.append("}")
         self.str = "\n".join(cmds)

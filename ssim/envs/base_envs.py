@@ -569,28 +569,37 @@ class FetchableRodObjectsEnvironment(
             height=height,
         )
 
+        x_sum = sum(point.center[0] for point in self.object_configs)
+        y_sum = sum(point.center[1] for point in self.object_configs)
+        
+        num_points = len(self.object_configs)
+        
+        x_avg = x_sum / num_points
+        y_avg = y_sum / num_points
+        
         frames = len(self.rod_callback['time'])
         for i in tqdm(range(frames), disable=False, desc="Rendering .povray"):
-            renderer.reset_stage(
-                top_camera_position=[0, 15, 2], top_camera_look_at=[-2, 0, 2]
-            )
+            renderer.reset_stage(top_camera_position=[-1.5, 10, 2], top_camera_look_at=[-1.5, 0, 2])
             for object_ in self.objects:
                 id_ = self.object2id[object_]
                 object_callback = self.object_callbacks[id_]
                 if isinstance(object_, ea.Sphere):
                     renderer.add_stage_object(
-                        object_type='sphere',
+                        object_type='sphere', 
                         name=f'sphere{id_}',
+                        shape=str(self.object_configs[id_].shape),
                         position=np.squeeze(object_callback['position'][i]),
                         radius=np.squeeze(object_callback['radius'][i]),
                     )
                 elif isinstance(object_, MeshSurface):
+                    scale = np.mean(object_.mesh_scale)
                     renderer.add_stage_object(
                         object_type='mesh',
-                        name=f'mesh{id_}',
+                        name=f'sphere{id_}',
+                        shape=str(self.object_configs[id_].shape),
                         mesh_name='cube_mesh',
                         position=np.squeeze(object_callback['position'][i]),
-                        scale=1,  # TODO
+                        scale=scale,  # TODO
                         matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
                     )
             renderer.render_single_step(
