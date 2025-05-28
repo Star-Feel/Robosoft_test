@@ -71,15 +71,16 @@ class BlenderRenderer:
 
         # plane settings
         bpy.ops.mesh.primitive_plane_add(
-            size=10, enter_editmode=False, align='WORLD', location=(0, 0, 0)
+            size=20, enter_editmode=False, align='WORLD', location=(0, -5, 0)
         )
         plane = bpy.context.object
         plane.name = "GroundPlane"
-        plane.rotation_euler = (0, math.radians(90), 0)
         material = bpy.data.materials.new(name="GroundMaterial")
-        material.diffuse_color = (1.0, 1.0, 1.0, 1.0)  # 设置为白色
+        material.diffuse_color = (0.5, 0.5, 0, 1.0)  # 设置为白色
         plane.data.materials.append(material)
+        plane.rotation_euler[1] = math.radians(85)  # 将角度转换为弧度
 
+        
         # scene settings
         scene = bpy.context.scene
         scene.render.engine = 'BLENDER_EEVEE_NEXT'  # 使用 Eevee 引擎
@@ -143,7 +144,10 @@ class BlenderRenderer:
             print(f"rendering {pov_file} ({i+1}/{len(pov_files)})")
 
             # 只更新软体机器人和目标物体的部分，保留相机和其他静态物体
-            self.update_snake_only(pov_path, target_id)
+            if i == 0:
+                self.update_snake_only(pov_path, target_id=None)
+            else:
+                self.update_snake_only(pov_path, target_id)
 
             # 渲染当前帧
             bpy.context.scene.frame_set(frame_num)
@@ -160,7 +164,7 @@ class BlenderRenderer:
             f"批量渲染完成，总用时: {total_time:.2f}秒，平均每帧: {total_time/len(pov_files):.2f}秒"
         )
 
-    def Single_step_rendering(self, current_step, pov_dir, output_dir):
+    def Single_step_rendering(self, current_step, action_flag, target_id, pov_dir, output_dir):
 
         os.makedirs(output_dir, exist_ok=True)
 
@@ -173,9 +177,12 @@ class BlenderRenderer:
         total_start_time = time.time()
 
         print(f"rendering {pov_file}")
-
-        # 只更新蛇的部分，保留相机和其他静态物体
-        self.update_snake_only(pov_file)
+        
+        if any(action_flag):
+            self.update_snake_only(pov_file, target_id)
+        else:
+            # 只更新蛇的部分，保留相机和其他静态物体
+            self.update_snake_only(pov_file, None)
         # self.set_target_obj(target_id)
 
         # 渲染当前帧

@@ -91,6 +91,16 @@ def main():
                 print('Rod end point arrives at object.')
                 break
 
+            env.single_step_3d_blend(
+                output_images_dir=osp.join(work_dir, "visual"),
+                fps=15,
+                width=480,
+                height=360,
+                current_step=i,
+                interval=1,
+                target_id=int(info['target_id']),
+            )
+
     env.visualize_3d_blender(
         video_name='test',
         output_images_dir=osp.join(work_dir,'test/'),

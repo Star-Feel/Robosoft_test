@@ -497,12 +497,21 @@ class FetchableRodObjectsEnvironment(
         )
 
         # refine camera setting
+        # x_max = max(list(point.center[0] for point in self.object_configs))
+        # y_max = max(list(point.center[1] for point in self.object_configs))
+        # z_max = max(list(point.center[2] for point in self.object_configs))
 
+        # x_min = min(list(point.center[0] for point in self.object_configs))
+        # y_min = min(list(point.center[1] for point in self.object_configs))
+        # z_min = min(list(point.center[2] for point in self.object_configs))
+        
+        # x_avg = (x_max + x_min) / 2
+        # y_avg = (y_max + y_min) / 2
+        # z_avg = (z_max + z_min) / 2
+        
         frames = len(self.rod_callback['time'])
         for i in tqdm(range(frames), disable=False, desc="Rendering .povray"):
-            renderer.reset_stage(
-                top_camera_position=[-4, -4, 0], top_camera_look_at=[0, 0, 1]
-            )
+            renderer.reset_stage(top_camera_position=[2, 7, 1], top_camera_look_at=[0, 0, 1])
             for object_ in self.objects:
                 id_ = self.object2id[object_]
                 object_callback = self.object_callbacks[id_]
@@ -543,7 +552,8 @@ class FetchableRodObjectsEnvironment(
         width=960,
         height=540,
         current_step=0,
-        interval=0
+        interval=0,
+        target_id=0
     ):
         if current_step % interval == 0:
             top_view_dir = os.path.join(output_images_dir, "top")
@@ -556,9 +566,7 @@ class FetchableRodObjectsEnvironment(
                 height=height,
             )
 
-            renderer.reset_stage(
-                top_camera_position=[0, 15, 2], top_camera_look_at=[-2, 0, 2]
-            )
+            renderer.reset_stage(top_camera_position=[2, 7, 1], top_camera_look_at=[0, 0, 1])
             for object_ in self.objects:
                 id_ = self.object2id[object_]
                 object_callback = self.object_callbacks[id_]
@@ -566,16 +574,19 @@ class FetchableRodObjectsEnvironment(
                     renderer.add_stage_object(
                         object_type='sphere',
                         name=f'sphere{id_}',
+                        shape=str(self.object_configs[id_].shape),
                         position=np.squeeze(object_callback['position'][0]),
                         radius=np.squeeze(object_callback['radius'][0]),
                     )
                 elif isinstance(object_, MeshSurface):
+                    scale = np.mean(object_.mesh_scale)
                     renderer.add_stage_object(
                         object_type='mesh',
                         name=f'mesh{id_}',
+                        shape=str(self.object_configs[id_].shape),
                         mesh_name='cube_mesh',
                         position=np.squeeze(object_callback['position'][0]),
-                        scale=1,  # TODO
+                        scale=scale,  # TODO
                         matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
                     )
 
@@ -590,9 +601,7 @@ class FetchableRodObjectsEnvironment(
                 save_img=False,
             )
 
-            blender_renderer.Single_step_rendering(
-                current_step, top_view_dir, top_view_dir
-            )
+            blender_renderer.Single_step_rendering(current_step, self.action_flags, target_id, top_view_dir, top_view_dir)
 
 
 class RodSphereEnvironment(RodMixin, RigidMixin, SimulatedEnvironment):
