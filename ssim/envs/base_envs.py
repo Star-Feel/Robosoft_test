@@ -13,42 +13,53 @@ import os
 import pickle
 from abc import ABC, abstractmethod
 from typing import Optional
+
 import elastica as ea
 import gym
-from gym import spaces
 import matplotlib.pyplot as plt
 import numpy as np
-import bpy
-
-from elastica import (BaseSystemCollection, CallBacks, Connections,
-                      Constraints, Contact, Damping, Forcing, PositionVerlet)
+from elastica import (
+    BaseSystemCollection,
+    CallBacks,
+    Connections,
+    Constraints,
+    Contact,
+    Damping,
+    Forcing,
+    PositionVerlet,
+)
 from elastica.timestepper import extend_stepper_interface
+from gym import spaces
 from matplotlib import animation
 from tqdm import tqdm
 
 from ..components import MeshSurface, RigidBodyCallBack, RodCallBack
 from ..components.callback import MeshSurfaceCallBack
-from ..visualize.visualizer import rod_objects_3d_visualize
 from ..utils import compute_rotation_matrix
 from ..visualize.pov2blend import BlenderRenderer
 from ..visualize.renderer import POVRayRenderer
+from ..visualize.visualizer import rod_objects_3d_visualize
 
 
-class BaseSimulator(BaseSystemCollection, Constraints, Connections, Forcing,
-                    Damping, Contact, CallBacks):
+class BaseSimulator(
+    BaseSystemCollection, Constraints, Connections, Forcing, Damping, Contact,
+    CallBacks
+):
     """Base simulator class combining Elastica functionalities."""
     pass
 
 
 class SimulatedEnvironment(ABC):
 
-    def __init__(self,
-                 *args,
-                 final_time: float,
-                 time_step: int,
-                 update_interval: int = 1,
-                 rendering_fps: int = 60,
-                 **kwargs):
+    def __init__(
+        self,
+        *args,
+        final_time: float,
+        time_step: int,
+        update_interval: int = 1,
+        rendering_fps: int = 60,
+        **kwargs
+    ):
 
         self.simulator = BaseSimulator()
 
@@ -86,7 +97,8 @@ class SimulatedEnvironment(ABC):
 
         # Prepare for time stepping
         self.do_step, self.stages_and_updates = extend_stepper_interface(
-            self.stateful_stepper, self.simulator)
+            self.stateful_stepper, self.simulator
+        )
 
 
 class SimulateMixin(SimulatedEnvironment):
@@ -94,13 +106,15 @@ class SimulateMixin(SimulatedEnvironment):
     Deprecated: Use SimulatedEnvironment instead.
     """
 
-    def __init__(self,
-                 *args,
-                 final_time: float,
-                 time_step: int,
-                 update_interval: int = 1,
-                 rendering_fps: int = 60,
-                 **kwargs):
+    def __init__(
+        self,
+        *args,
+        final_time: float,
+        time_step: int,
+        update_interval: int = 1,
+        rendering_fps: int = 60,
+        **kwargs
+    ):
 
         self.final_time = final_time
         self.time_step = time_step
@@ -128,7 +142,8 @@ class SimulateMixin(SimulatedEnvironment):
 
         # Prepare for time stepping
         self.do_step, self.stages_and_updates = extend_stepper_interface(
-            self.stateful_stepper, self.simulator)
+            self.stateful_stepper, self.simulator
+        )
 
 
 class RodMixin(SimulatedEnvironment):
@@ -167,7 +182,8 @@ class RodMixin(SimulatedEnvironment):
         self.simulator.collect_diagnostics(self.shearable_rod).using(
             RodCallBack,
             step_skip=step_skip,
-            callback_params=self.rod_callback)
+            callback_params=self.rod_callback
+        )
 
 
 class RigidMixin(SimulatedEnvironment):
@@ -193,18 +209,18 @@ class RigidMixin(SimulatedEnvironment):
         return sphere
 
     def add_mesh_surface(
-            self,
-            mesh_path: str,
-            center: np.ndarray = np.array([0., 0., 0.]),
-            scale: np.ndarray = np.array([1., 1., 1.]),
-            rotate: np.ndarray = np.array([0., 0., 0.]),
+        self,
+        mesh_path: str,
+        center: np.ndarray = np.array([0., 0., 0.]),
+        scale: np.ndarray = np.array([1., 1., 1.]),
+        rotate: np.ndarray = np.array([0., 0., 0.]),
     ) -> MeshSurface:
         mesh = MeshSurface(mesh_path)
-        mesh.translate(center)
         mesh.scale(scale)
         mesh.rotate(np.array([1, 0, 0]), rotate[0])
         mesh.rotate(np.array([0, 1, 0]), rotate[1])
         mesh.rotate(np.array([0, 0, 1]), rotate[2])
+        mesh.translate(center)
         self.simulator.append(mesh)
         return mesh
 
@@ -238,11 +254,11 @@ class ObjectsMixin(RigidMixin):
         return sphere
 
     def add_mesh_surface(
-            self,
-            mesh_path: str,
-            center: np.ndarray = np.array([0., 0., 0.]),
-            scale: np.ndarray = np.array([1., 1., 1.]),
-            rotate: np.ndarray = np.array([0., 0., 0.]),
+        self,
+        mesh_path: str,
+        center: np.ndarray = np.array([0., 0., 0.]),
+        scale: np.ndarray = np.array([1., 1., 1.]),
+        rotate: np.ndarray = np.array([0., 0., 0.]),
     ) -> MeshSurface:
         mesh = super().add_mesh_surface(mesh_path, center, scale, rotate)
         self.objects.append(mesh)
@@ -260,17 +276,20 @@ class ObjectsMixin(RigidMixin):
                     RigidBodyCallBack,
                     step_skip=step_skip,
                     callback_params=self.object_callbacks[
-                        self.object2id[object_]])
+                        self.object2id[object_]]
+                )
             elif isinstance(object_, MeshSurface):
                 self.simulator.collect_diagnostics(object_).using(
                     MeshSurfaceCallBack,
                     step_skip=step_skip,
                     callback_params=self.object_callbacks[
-                        self.object2id[object_]])
+                        self.object2id[object_]]
+                )
 
 
-class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
-                                     SimulatedEnvironment):
+class FetchableRodObjectsEnvironment(
+    RodMixin, ObjectsMixin, SimulatedEnvironment
+):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -308,11 +327,11 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
         pass
 
     def add_mesh_surface(
-            self,
-            mesh_path: str,
-            center: np.ndarray = np.array([0., 0., 0.]),
-            scale: np.ndarray = np.array([1., 1., 1.]),
-            rotate: np.ndarray = np.array([0., 0., 0.]),
+        self,
+        mesh_path: str,
+        center: np.ndarray = np.array([0., 0., 0.]),
+        scale: np.ndarray = np.array([1., 1., 1.]),
+        rotate: np.ndarray = np.array([0., 0., 0.]),
     ) -> MeshSurface:
         mesh = super().add_mesh_surface(mesh_path, center, scale, rotate)
 
@@ -334,37 +353,60 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
         """
 
         callback_data = {
-            "deciption":
-            "rod is the softrobot, whose callback is a dict of positions,"
+            "deciption": "rod is the softrobot, whose callback is a dict of positions,"
             "velocities... \nobjects is all spheres, whose callback is a list"
             "of each object's callback",
-            "rod_callback":
-            self.rod_callback,
-            "object_callbacks":
-            self.object_callbacks,
+            "rod_callback": self.rod_callback,
+            "object_callbacks": self.object_callbacks,
         }
 
         with open(filename, 'wb') as f:
             pickle.dump(callback_data, f)
 
     def visualize_2d(
-            self,
-            video_name="video.mp4",
-            fps=15,
-            xlim=(0, 4),
-            ylim=(-1, 1),
+        self,
+        video_name="video.mp4",
+        fps=15,
+        xlim=None,
+        ylim=None,
+        skip=1,
+        equal_aspect=False,
+        target_last=False,
     ):
 
         positions_over_time = np.array(self.rod_callback["position"])
+        positions_over_time = positions_over_time[::skip]
         object_positions = [
-            np.array(params["position"]) for params in self.object_callbacks
+            np.array(params["position"][::skip])
+            for params in self.object_callbacks
         ]
+
+        all_positions = np.concatenate([
+            positions_over_time.transpose(0, 2, 1).reshape(-1, 3),
+            *[pos.reshape(-1, 3) for pos in object_positions]
+        ],
+                                       axis=0)
+        # Automatically set xlim and ylim if not provided
+        if xlim is None:
+            x_min = np.min(all_positions[:, 2])
+            x_max = np.max(all_positions[:, 2])
+            xlim = (x_min, x_max)
+
+        if ylim is None:
+            y_min = np.min(all_positions[:, 0])
+            y_max = np.max(all_positions[:, 0])
+            ylim = (y_min, y_max)
+
+        if equal_aspect:
+            max_range = max(xlim[1] - xlim[0], ylim[1] - ylim[0])
+            xlim = (xlim[0], xlim[0] + max_range)
+            ylim = (ylim[0], ylim[0] + max_range)
 
         print("plot video")
         FFMpegWriter = animation.writers["ffmpeg"]
-        metadata = dict(title="Movie Test",
-                        artist="Matplotlib",
-                        comment="Movie support!")
+        metadata = dict(
+            title="Movie Test", artist="Matplotlib", comment="Movie support!"
+        )
         writer = FFMpegWriter(fps=fps, metadata=metadata)
         fig = plt.figure(figsize=(10, 8), frameon=True, dpi=150)
         ax = fig.add_subplot(111)
@@ -372,14 +414,15 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
         ax.set_ylim(*ylim)
         ax.set_xlabel("z [m]", fontsize=16)
         ax.set_ylabel("x [m]", fontsize=16)
-        rod_lines_2d = ax.plot(positions_over_time[0][2],
-                               positions_over_time[0][0])[0]
+        rod_lines_2d = ax.plot(
+            positions_over_time[0][2], positions_over_time[0][0]
+        )[0]
 
         # 初始化一个变量来保存当前的圆形对象
         object_plots = [None for _ in range(len(self.objects))]
 
         with writer.saving(fig, video_name, dpi=150):
-            for time in tqdm(range(1, len(self.rod_callback["time"]))):
+            for time in tqdm(range(1, positions_over_time.shape[0])):
                 # 更新杆的位置
                 rod_lines_2d.set_xdata(positions_over_time[time][2])
                 rod_lines_2d.set_ydata(positions_over_time[time][0])
@@ -394,11 +437,25 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
                         center_x = object_positions[idx][time][2]
                         center_y = object_positions[idx][time][0]
                         radius = obj.radius[0]
+                        color = 'red' if target_last and idx == len(
+                            self.objects
+                        ) - 1 else 'lightblue'
                         object_plots[idx] = plt.Circle((center_x, center_y),
                                                        radius,
                                                        edgecolor='b',
-                                                       facecolor='lightblue')
+                                                       facecolor=color)
                         ax.add_patch(object_plots[idx])
+                    elif isinstance(obj, MeshSurface):
+
+                        # 添加新的圆点
+                        center_x = object_positions[idx][time][2]
+                        center_y = object_positions[idx][time][0]
+                        color = 'red' if target_last and idx == len(
+                            self.objects
+                        ) - 1 else 'lightblue'
+                        object_plots[idx] = ax.plot(
+                            center_x, center_y, 'o', color=color
+                        )[0]
 
                 # 捕捉当前帧
                 writer.grab_frame()
@@ -440,10 +497,12 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
         )
 
         # refine camera setting
-        
+
         frames = len(self.rod_callback['time'])
         for i in tqdm(range(frames), disable=False, desc="Rendering .povray"):
-            renderer.reset_stage(top_camera_position=[-4, -4, 0], top_camera_look_at=[0, 0, 1])
+            renderer.reset_stage(
+                top_camera_position=[-4, -4, 0], top_camera_look_at=[0, 0, 1]
+            )
             for object_ in self.objects:
                 id_ = self.object2id[object_]
                 object_callback = self.object_callbacks[id_]
@@ -477,12 +536,12 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
         blender_renderer.batch_rendering(top_view_dir, top_view_dir, target_id)
         renderer.create_video(only_top=True)
 
-    def single_step_3d_blend(        
+    def single_step_3d_blend(
         self,
         output_images_dir,
         fps,
         width=960,
-        height=540, 
+        height=540,
         current_step=0,
         interval=0
     ):
@@ -497,7 +556,9 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
                 height=height,
             )
 
-            renderer.reset_stage(top_camera_position=[0, 15, 2], top_camera_look_at=[-2, 0, 2])
+            renderer.reset_stage(
+                top_camera_position=[0, 15, 2], top_camera_look_at=[-2, 0, 2]
+            )
             for object_ in self.objects:
                 id_ = self.object2id[object_]
                 object_callback = self.object_callbacks[id_]
@@ -529,7 +590,9 @@ class FetchableRodObjectsEnvironment(RodMixin, ObjectsMixin,
                 save_img=False,
             )
 
-            blender_renderer.Single_step_rendering(current_step, top_view_dir, top_view_dir)
+            blender_renderer.Single_step_rendering(
+                current_step, top_view_dir, top_view_dir
+            )
 
 
 class RodSphereEnvironment(RodMixin, RigidMixin, SimulatedEnvironment):
@@ -548,7 +611,8 @@ class RodSphereEnvironment(RodMixin, RigidMixin, SimulatedEnvironment):
         self.simulator.collect_diagnostics(self.sphere).using(
             RigidBodyCallBack,
             step_skip=step_skip,
-            callback_params=self.sphere_callback)
+            callback_params=self.sphere_callback
+        )
 
     def visualize_3d(self, video_name, fps, xlim=None, ylim=None, zlim=None):
         rod_objects_3d_visualize(
@@ -589,7 +653,7 @@ class RodControlMixin(SimulatedEnvironment, gym.Env):
         self.action_space = spaces.Box(
             low=-1.0,
             high=1.0,
-            shape=(3 * self.number_of_control_points,),
+            shape=(3 * self.number_of_control_points, ),
             dtype=np.float64,
         )
         self.action = np.zeros(3 * self.number_of_control_points)
@@ -598,8 +662,9 @@ class RodControlMixin(SimulatedEnvironment, gym.Env):
         # num_rod_state = len(np.ones(n_elem + 1)[0::num_points])
 
         if self.trainable:
-            self.total_learning_steps = int(self.total_steps /
-                                            self.update_interval)
+            self.total_learning_steps = int(
+                self.total_steps / self.update_interval
+            )
             self.boundary = boundary
             self.trainable_init()
 
@@ -638,8 +703,9 @@ class RodControlMixin(SimulatedEnvironment, gym.Env):
 
     def sampleAction(self):
 
-        random_action = (np.random.rand(1 * self.number_of_control_points) -
-                         0.5) * 2
+        random_action = (
+            np.random.rand(1 * self.number_of_control_points) - 0.5
+        ) * 2
         return random_action
 
     def seed(self, seed):

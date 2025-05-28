@@ -1,2 +1,7 @@
 transformers
 pyyaml
+numba
+scipy
+pyvista
+bpy
+trimesh

@@ -6,7 +6,8 @@ objects:
   #   density: 1.0
   - type: mesh_surface
     mesh_path: /data/zyw/workshop/PyElastica/tests/cube.stl
-    center: [0.0, 0.0, 3.0]
+    center: [0.0, 0.0, 2.0]
+    scale: [0.1, 0.1, 0.1]
   # - type: sphere
   #   center: [0.25, 0, 1.0]
   #   radius: 0.3
@@ -24,7 +25,7 @@ rod:
 
 # Simulator configuration
 simulator:
-  final_time: 10.0
+  final_time: 4.0
   time_step: 2.5e-4
   collect_data: true
   rendering_fps: 20

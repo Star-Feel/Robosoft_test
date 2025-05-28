@@ -1,10 +1,10 @@
 import dataclasses
 from dataclasses import dataclass, field, fields
-from typing import Any, Iterable, NewType, Optional, Sequence, Type, Union, List
+from typing import Any, Iterable, NewType, Optional, Sequence, Type, Union
 
 import numpy as np
-from transformers import HfArgumentParser
 import yaml
+from transformers import HfArgumentParser
 
 DataClass = NewType("DataClass", Any)
 DataClassType = NewType("DataClassType", Any)
@@ -45,14 +45,17 @@ class SuperArgumentParser(HfArgumentParser):
                 types = {f.name: f.type for f in fields(dtype) if f.init}
                 inputs = {
                     k: self._convert_type(v, types[k])
-                    for k, v in args.items() if k in keys
+                    for k, v in args.items()
+                    if k in keys
                 }
                 unused_keys.difference_update(inputs.keys())
                 obj = dtype(**inputs)
                 outputs.append(obj)
             if not allow_extra_keys and unused_keys:
-                raise ValueError(f"Some keys are not used by the"
-                                 f"HfArgumentParser: {sorted(unused_keys)}")
+                raise ValueError(
+                    f"Some keys are not used by the"
+                    f"HfArgumentParser: {sorted(unused_keys)}"
+                )
             return tuple(outputs)
         outputs = []
         for idx, dtype in enumerate(self.dataclass_types):
@@ -63,7 +66,8 @@ class SuperArgumentParser(HfArgumentParser):
             types = {f.name: f.type for f in fields(dtype) if f.init}
             inputs = {
                 k: self._convert_type(v, types[k])
-                for k, v in local_args.items() if k in keys
+                for k, v in local_args.items()
+                if k in keys
             }
             obj = dtype(**inputs)
             outputs.append(obj)
@@ -97,15 +101,16 @@ class SuperArguments:
                 dataclass_type = value.get("type", field_name)
                 setattr(
                     self, field_name,
-                    SuperArgumentParser(args_dict[dataclass_type]).parse_dict(
-                        value, True)[0])
+                    SuperArgumentParser(args_dict[dataclass_type]
+                                        ).parse_dict(value, True)[0]
+                )
             elif isinstance(value, list):
                 configs = []
                 for config in value:
                     configs.append(
-                        SuperArgumentParser(
-                            args_dict[config["type"]]).parse_dict(
-                                config, True)[0])
+                        SuperArgumentParser(args_dict[config["type"]]
+                                            ).parse_dict(config, True)[0]
+                    )
                 setattr(self, field_name, configs)
 
     @classmethod
@@ -114,6 +119,7 @@ class SuperArguments:
             data = yaml.safe_load(file)
 
         return cls(**data)
+
 
 @dataclass
 class RodControllerArgumets:
@@ -135,22 +141,14 @@ class SimulatorArguments:
 
 
 @dataclass
-class RodControllerArgumets:
-    trainable: bool = False
-    number_of_control_points: int = 6
-    obs_state_points: int = 10
-
-    boundary: Optional[tuple] = None
-
-
-@dataclass
 class SphereArguments:
     shape: str = ""
     center: np.ndarray = field(default_factory=list)
     radius: float = field(default_factory=float)
     density: float = field(default_factory=float)
     direction: np.ndarray = field(
-        default_factory=lambda: np.array([0., 0., 0.]))
+        default_factory=lambda: np.array([0., 0., 0.])
+    )
 
 
 @dataclass
@@ -171,7 +169,7 @@ class RodArguments:
 
 @dataclass
 class MeshSurfaceArguments:
-    shape:str = ""
+    shape: str = ""
     mesh_path: str = ""
     center: np.ndarray = field(default_factory=lambda: np.array([0., 0., 0.]))
     scale: np.ndarray = field(default_factory=lambda: np.array([1., 1., 1.]))

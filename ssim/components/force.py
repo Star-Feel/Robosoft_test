@@ -3,6 +3,7 @@ __all__ = [
     "MuscleTorquesWithVaryingBetaSplines",
 ]
 
+from typing import Optional
 import numpy as np
 from elastica import NoForces
 from elastica.typing import RodType
@@ -112,15 +113,17 @@ class MuscleTorquesWithVaryingBetaSplines(NoForces):
                 "Please type normal, binormal or tangent as muscle torque direction. Input should be string."
             )
 
-        self.points_array = (points_func_array if hasattr(
-            points_func_array, "__call__") else
-                             lambda time_v: points_func_array)
+        self.points_array = (
+            points_func_array if hasattr(points_func_array, "__call__") else
+            lambda time_v: points_func_array
+        )
 
         self.base_length = base_length
         self.muscle_torque_scale = muscle_torque_scale
 
-        self.torque_profile_recorder = kwargs.get("torque_profile_recorder",
-                                                  None)
+        self.torque_profile_recorder = kwargs.get(
+            "torque_profile_recorder", None
+        )
         self.step_skip = step_skip
         self.counter = 0  # for recording data from the muscles
         self.number_of_control_points = number_of_control_points
@@ -128,8 +131,8 @@ class MuscleTorquesWithVaryingBetaSplines(NoForces):
             (2, self.number_of_control_points + 2)
         )  # This caches the control points. Note that first and last control points are zero.
         self.points_cached[0, :] = np.linspace(
-            0, self.base_length, self.number_of_control_points +
-            2)  # position of control points along the rod.
+            0, self.base_length, self.number_of_control_points + 2
+        )  # position of control points along the rod.
         self.points_cached[1, 1:-1] = np.zeros(
             self.number_of_control_points
         )  # initalize at a value that RL can not match
@@ -151,9 +154,11 @@ class MuscleTorquesWithVaryingBetaSplines(NoForces):
         # torque at first and last nodes.
         # print('torque',self.max_rate_of_change_of_activation)
 
-        if (not np.array_equal(self.points_cached[1, 1:-1],
-                               self.points_array(time))
-                or self.initial_call_flag == 0):
+        if (
+            not np.
+            array_equal(self.points_cached[1, 1:-1], self.points_array(time))
+            or self.initial_call_flag == 0
+        ):
             self.initial_call_flag = 1
 
             # Apply filter to the activation signal, to prevent drastic changes in activation signal.
@@ -163,13 +168,15 @@ class MuscleTorquesWithVaryingBetaSplines(NoForces):
                 self.max_rate_of_change_of_activation,
             )
 
-            self.my_spline = make_interp_spline(self.points_cached[0],
-                                                self.points_cached[1])
+            self.my_spline = make_interp_spline(
+                self.points_cached[0], self.points_cached[1]
+            )
             cumulative_lengths = np.cumsum(system.lengths)
 
             # Compute the muscle torque magnitude from the beta spline.
             self.torque_magnitude_cache = self.muscle_torque_scale * self.my_spline(
-                cumulative_lengths)
+                cumulative_lengths
+            )
 
         self.compute_muscle_torques(
             self.torque_magnitude_cache,
@@ -182,11 +189,14 @@ class MuscleTorquesWithVaryingBetaSplines(NoForces):
                 self.torque_profile_recorder["time"].append(time)
 
                 self.torque_profile_recorder["torque_mag"].append(
-                    self.torque_magnitude_cache.copy())
+                    self.torque_magnitude_cache.copy()
+                )
                 self.torque_profile_recorder["torque"].append(
-                    system.external_torques.copy())
+                    system.external_torques.copy()
+                )
                 self.torque_profile_recorder["element_position"].append(
-                    np.cumsum(system.lengths))
+                    np.cumsum(system.lengths)
+                )
 
         self.counter += 1
 
@@ -231,4 +241,5 @@ class MuscleTorquesWithVaryingBetaSplines(NoForces):
         """
         signal_difference = input_signal - signal
         signal += np.sign(signal_difference) * np.minimum(
-            max_signal_rate_of_change, np.abs(signal_difference))
+            max_signal_rate_of_change, np.abs(signal_difference)
+        )

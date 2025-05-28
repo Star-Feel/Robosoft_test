@@ -10,14 +10,20 @@ import elastica as ea
 import numpy as np
 from elastica import OneEndFixedRod, RigidBodyBase
 from elastica._calculus import _isnan_check
-from stl import mesh
 
-from ..arguments import (MeshSurfaceArguments, RodArguments,
-                         SimulatorArguments, SphereArguments, SuperArguments)
-from ..components import (ChangeableUniformForce,
-                          RigidBodyAnalyticalLinearDamper,
-                          RodMeshSurfaceContactWithGridMethod)
-from ..components.contact import JoinableRodSphereContact, surface_grid
+from ..arguments import (
+    MeshSurfaceArguments,
+    RodArguments,
+    SimulatorArguments,
+    SphereArguments,
+    SuperArguments,
+)
+from ..components import (
+    ChangeableUniformForce,
+    RigidBodyAnalyticalLinearDamper,
+    RodMeshSurfaceContactWithGridMethod,
+)
+from ..components.contact import JoinableRodSphereContact, surface_grid_xyz
 from ..components.surface.mesh_surface import MeshSurface
 from .base_envs import FetchableRodObjectsEnvironment
 
@@ -50,7 +56,8 @@ class SoftGrabEnvironment(FetchableRodObjectsEnvironment):
     def setup(self):
 
         shear_modulus = self.rod_config.youngs_modulus / (
-            self.rod_config.poisson_ratio + 1.0)
+            self.rod_config.poisson_ratio + 1.0
+        )
 
         self.add_shearable_rod(
             n_elem=self.rod_config.n_elem,
@@ -72,16 +79,17 @@ class SoftGrabEnvironment(FetchableRodObjectsEnvironment):
                     density=object_config.density,
                 )
             elif isinstance(object_config, MeshSurfaceArguments):
-                self.add_mesh_surface(object_config.mesh_path,
-                                      object_config.center,
-                                      object_config.scale,
-                                      object_config.rotate)
+                self.add_mesh_surface(
+                    object_config.mesh_path, object_config.center,
+                    object_config.scale, object_config.rotate
+                )
 
         # fix one end of the rod
         self.simulator.constrain(self.shearable_rod).using(
             OneEndFixedRod,
             constrained_position_idx=(0, ),
-            constrained_director_idx=(0, ))
+            constrained_director_idx=(0, )
+        )
 
         # Force to rod
         self.simulator.add_forcing_to(self.shearable_rod).using(
@@ -93,21 +101,23 @@ class SoftGrabEnvironment(FetchableRodObjectsEnvironment):
         for obj in self.objects:
             if isinstance(obj, ea.Sphere):
                 self.simulator.detect_contact_between(
-                    self.shearable_rod,
-                    obj).using(JoinableRodSphereContact,
-                               k=10,
-                               nu=0,
-                               velocity_damping_coefficient=1e3,
-                               friction_coefficient=10,
-                               action_flags=self.action_flags,
-                               attach_flags=self.attach_flags,
-                               flag_id=self.object2id[obj],
-                               collision=True,
-                               eps=0.1)
+                    self.shearable_rod, obj
+                ).using(
+                    JoinableRodSphereContact,
+                    k=10,
+                    nu=0,
+                    velocity_damping_coefficient=1e3,
+                    friction_coefficient=10,
+                    action_flags=self.action_flags,
+                    attach_flags=self.attach_flags,
+                    flag_id=self.object2id[obj],
+                    collision=True,
+                    eps=0.1
+                )
             elif isinstance(obj, MeshSurface):
-                mesh_data = mesh.Mesh.from_file(obj.model_path)
-                grid_size = 0.1  # 网格大小
-                faces_grid = surface_grid(mesh_data.vectors, grid_size)
+                grid_size = np.min(obj.mesh_scale) / 10
+                # faces: (dim, n_faces, n_points)
+                faces_grid = surface_grid_xyz(obj.faces, grid_size)
                 faces_grid["model_path"] = obj.model_path
                 faces_grid["grid_size"] = grid_size
                 faces_grid["surface_reorient"] = obj.mesh_orientation
@@ -115,13 +125,15 @@ class SoftGrabEnvironment(FetchableRodObjectsEnvironment):
                 nu = 10  # 阻尼系数
                 surface_tol = 1e-2
                 self.simulator.detect_contact_between(
-                    self.shearable_rod,
-                    obj).using(RodMeshSurfaceContactWithGridMethod,
-                               k=k,
-                               nu=nu,
-                               faces_grid=faces_grid,
-                               grid_size=grid_size,
-                               surface_tol=surface_tol)
+                    self.shearable_rod, obj
+                ).using(
+                    RodMeshSurfaceContactWithGridMethod,
+                    k=k,
+                    nu=nu,
+                    faces_grid=faces_grid,
+                    grid_size=grid_size,
+                    surface_tol=surface_tol
+                )
 
         # damping of rod and objects
         damping_constant = 2e-2
@@ -141,7 +153,8 @@ class SoftGrabEnvironment(FetchableRodObjectsEnvironment):
 
         # add callbacks
         callback_step_skip = int(
-            1.0 / (self.sim_config.rendering_fps * self.time_step))
+            1.0 / (self.sim_config.rendering_fps * self.time_step)
+        )
         # Add callbacks for data collection if enabled
         self._add_data_collection_callbacks(callback_step_skip)
 
@@ -158,10 +171,8 @@ class SoftGrabEnvironment(FetchableRodObjectsEnvironment):
                 return {"status": "error", "message": "NaN values detected"}
 
         return {
-            "time":
-            self.time_tracker,
-            "rod_tip_position":
-            self.shearable_rod.position_collection[..., -1].copy(),
-            "status":
-            "ok"
+            "time": self.time_tracker,
+            "rod_tip_position": self.shearable_rod.position_collection[
+                ..., -1].copy(),
+            "status": "ok"
         }

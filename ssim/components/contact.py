@@ -2,82 +2,134 @@ __all__ = [
     "JoinableRodSphereContact",
     "RodMeshSurfaceContactWithGridMethod",
 ]
+from typing import Union
+
 import elastica
-from elastica import NoContact, RodSphereContact, RodType, AllowedContactType, SystemType
-from elastica.interaction import node_to_element_position
-from elastica.interaction import node_to_element_velocity, elements_to_nodes_inplace
-from elastica._linalg import _batch_product_k_ik_to_ik, _batch_dot, _batch_norm
-from elastica.rod import RodBase
-from .surface import MeshSurface
 import numba
 import numpy as np
+from elastica import (
+    AllowedContactType,
+    NoContact,
+    RodSphereContact,
+    RodType,
+    SystemType,
+)
+from elastica._linalg import _batch_dot, _batch_norm, _batch_product_k_ik_to_ik
+from elastica.rod import RodBase
+
+from .surface import MeshSurface
 
 
-def find_contact_faces_idx(
+def find_contact_faces_idx_xy(
     faces_grid, x_min, y_min, grid_size, position_collection
 ):
     element_position = elastica.contact_utils._node_to_element_position(
         position_collection
     )
     n_element = element_position.shape[-1]
-    position_idx_array = np.empty((0))
-    face_idx_array = np.empty((0))
-    grid_position = np.round(
-        (element_position[0:2, :] - np.array([x_min, y_min]).reshape((2, 1)))
-        / grid_size
-    )
 
-    # find face neighborhood of each element position
+    # 预分配列表提升性能
+    position_idx_list = []
+    face_idx_list = []
+
+    # 计算网格坐标（向量化计算）
+    grid_coords = (
+        element_position[0:2, :] - np.array([[x_min], [y_min]])
+    ) / grid_size
+    grid_x, grid_y = np.round(grid_coords[0]), np.round(grid_coords[1])
+
+    # 定义安全查询函数
+    def safe_get(x, y):
+        return faces_grid.get((int(x), int(y)), np.array([], dtype=int))
 
     for i in range(n_element):
-        try:
-            face_idx_1 = faces_grid[
-                (int(grid_position[0, i]), int(grid_position[1, i]
-                                               ))]  # first quadrant
-        except Exception:
-            face_idx_1 = np.empty((0))
-        try:
-            face_idx_2 = faces_grid[
-                (int(grid_position[0, i] - 1), int(grid_position[1, i]
-                                                   ))]  # second quadrant
-        except Exception:
-            face_idx_2 = np.empty((0))
-        try:
-            face_idx_3 = faces_grid[
-                (int(grid_position[0, i] - 1),
-                 int(grid_position[1, i] - 1))]  # third quadrant
-        except Exception:
-            face_idx_3 = np.empty((0))
-        try:
-            face_idx_4 = faces_grid[
-                (int(grid_position[0, i]),
-                 int(grid_position[1, i] - 1))]  # fourth quadrant
-        except Exception:
-            face_idx_4 = np.empty((0))
-        face_idx_element = np.concatenate(
-            (face_idx_1, face_idx_2, face_idx_3, face_idx_4)
-        )
-        face_idx_element_no_duplicates = np.unique(face_idx_element)
-        if face_idx_element_no_duplicates.size == 0:
-            raise RuntimeError(
-                "Rod object out of grid bounds"
-            )  # a rod element is on four grids with no faces
+        # 查询四邻域网格
+        queries = [
+            safe_get(grid_x[i], grid_y[i]),  # 当前网格
+            safe_get(grid_x[i] - 1, grid_y[i]),  # 左侧网格
+            safe_get(grid_x[i] - 1, grid_y[i] - 1),  # 左下方网格
+            safe_get(grid_x[i], grid_y[i] - 1)  # 下方网格
+        ]
 
-        face_idx_array = np.concatenate(
-            (face_idx_array, face_idx_element_no_duplicates)
-        )
-        n_contacts = face_idx_element_no_duplicates.shape[0]
-        position_idx_array = np.concatenate(
-            (position_idx_array, i * np.ones((n_contacts, )))
-        )
+        # 合并并去重
+        face_idx_element = np.unique(np.concatenate(queries))
 
-    position_idx_array = position_idx_array.astype(int)
-    face_idx_array = face_idx_array.astype(int)
-    return position_idx_array, face_idx_array, element_position
+        if face_idx_element.size > 0:
+            # 记录有效接触对
+            position_idx_list.extend([i] * len(face_idx_element))
+            face_idx_list.extend(face_idx_element.tolist())
+
+    # 转换为数组输出
+    return (
+        np.array(position_idx_list,
+                 dtype=int), np.array(face_idx_list,
+                                      dtype=int), element_position
+    )
+
+
+def find_contact_faces_idx_xyz(
+    faces_grid, x_min, y_min, z_min, grid_size, position_collection
+):
+    # 转换节点坐标为元素中心坐标
+    element_position = elastica.contact_utils._node_to_element_position(
+        position_collection
+    )
+    n_element = element_position.shape[-1]
+
+    # 预分配列表提升性能
+    position_idx_list = []
+    face_idx_list = []
+
+    # 三维网格坐标计算（向量化）
+    grid_coords = (
+        element_position[:3, :] - np.array([[x_min], [y_min], [z_min]])
+    ) / grid_size
+    grid_x, grid_y, grid_z = np.round(grid_coords[0]
+                                      ), np.round(grid_coords[1]
+                                                  ), np.round(grid_coords[2])
+
+    # 安全查询函数（三维版本）
+    def safe_get_3d(x, y, z):
+        return faces_grid.get((int(x), int(y), int(z)), np.array([],
+                                                                 dtype=int))
+
+    # 定义三维邻域偏移（3x3x3邻域）
+    neighbor_offsets = [
+        (0, 0, 0),  # 当前网格
+        (-1, 0, 0),  # x-1
+        (1, 0, 0),  # x+1
+        (0, -1, 0),  # y-1
+        (0, 1, 0),  # y+1
+        (0, 0, -1),  # z-1
+        (0, 0, 1),  # z+1
+        # 可根据需要扩展更多邻域
+    ]
+
+    for i in range(n_element):
+        queries = []
+        # 遍历所有邻域偏移
+        for dx, dy, dz in neighbor_offsets:
+            x = grid_x[i] + dx
+            y = grid_y[i] + dy
+            z = grid_z[i] + dz
+            queries.append(safe_get_3d(x, y, z))
+
+        # 合并并去重
+        face_idx_element = np.unique(np.concatenate(queries))
+
+        if face_idx_element.size > 0:
+            position_idx_list.extend([i] * len(face_idx_element))
+            face_idx_list.extend(face_idx_element.tolist())
+
+    return (
+        np.array(position_idx_list,
+                 dtype=int), np.array(face_idx_list,
+                                      dtype=int), element_position
+    )
 
 
 @numba.njit(cache=True)
-def surface_grid_numba(
+def surface_grid_numba_xy(
     faces, grid_size, face_x_left, face_x_right, face_y_down, face_y_up
 ):
     """
@@ -107,7 +159,56 @@ def surface_grid_numba(
     return faces_grid
 
 
-def surface_grid(faces, grid_size):
+@numba.njit(cache=True)
+def surface_grid_numba_xyz(
+    faces, grid_size, face_x_left, face_x_right, face_y_down, face_y_up,
+    face_z_bottom, face_z_top
+):
+    """
+    三维网格划分版本
+    faces形状应为(3, m, n)，其中m为面数量，n为顶点数
+    """
+    # 计算三维空间范围
+    x_min = np.min(faces[0, :, :])
+    y_min = np.min(faces[1, :, :])
+    z_min = np.min(faces[2, :, :])
+
+    # 计算各方向网格数量
+    n_x = int(np.ceil((np.max(faces[0, :, :]) - x_min) / grid_size))
+    n_y = int(np.ceil((np.max(faces[1, :, :]) - y_min) / grid_size))
+    n_z = int(np.ceil((np.max(faces[2, :, :]) - z_min) / grid_size))
+
+    faces_grid = dict()
+
+    # 三维网格遍历
+    for i in range(n_x):
+        x_l = x_min + i * grid_size
+        x_r = x_min + (i + 1) * grid_size
+
+        for j in range(n_y):
+            y_d = y_min + j * grid_size
+            y_u = y_min + (j + 1) * grid_size
+
+            for k in range(n_z):
+                z_b = z_min + k * grid_size
+                z_t = z_min + (k + 1) * grid_size
+
+                # 六方向非重叠判断
+                mask = ((face_x_left > x_r) |  # 面在右侧
+                        (face_x_right < x_l) |  # 面在左侧
+                        (face_y_down > y_u) |  # 面在上方
+                        (face_y_up < y_d) |  # 面在下方
+                        (face_z_bottom > z_t) |  # 面在前方
+                        (face_z_top < z_b)  # 面在后方
+                        ) == 0  # 取反得到相交的面
+
+                if np.any(mask):
+                    faces_grid[(i, j, k)] = np.where(mask)[0]
+
+    return faces_grid
+
+
+def surface_grid_xy(faces, grid_size):
     """
     Returns the faces_grid dictionary for rod-meshsurface contact
     This function only creates the faces_grid dict;
@@ -119,8 +220,35 @@ def surface_grid(faces, grid_size):
     face_y_up = np.max(faces[1, :, :], axis=0)
 
     return dict(
-        surface_grid_numba(
+        surface_grid_numba_xy(
             faces, grid_size, face_x_left, face_x_right, face_y_down, face_y_up
+        )
+    )
+
+
+def surface_grid_xyz(faces, grid_size):
+    """
+    Returns the faces_grid dictionary for rod-meshsurface contact
+    This function only creates the faces_grid dict;
+    the user must store the data in a binary file using pickle.dump
+    """
+    face_x_left = np.min(faces[0, :, :], axis=0)
+    face_y_down = np.min(faces[1, :, :], axis=0)
+    face_x_right = np.max(faces[0, :, :], axis=0)
+    face_y_up = np.max(faces[1, :, :], axis=0)
+    face_z_bottom = np.min(faces[2, :, :], axis=0)
+    face_z_top = np.max(faces[2, :, :], axis=0)
+
+    return dict(
+        surface_grid_numba_xyz(
+            faces,
+            grid_size,
+            face_x_left,
+            face_x_right,
+            face_y_down,
+            face_y_up,
+            face_z_bottom,
+            face_z_top,
         )
     )
 
@@ -363,16 +491,18 @@ class RodMeshSurfaceContactWithGridMethod(NoContact):
         self.mesh_surface_faces = system_two.faces
         self.mesh_surface_x_min = np.min(self.mesh_surface_faces[0, :, :])
         self.mesh_surface_y_min = np.min(self.mesh_surface_faces[1, :, :])
+        self.mesh_surface_z_min = np.min(self.mesh_surface_faces[2, :, :])
         self.mesh_surface_face_normals = system_two.face_normals
         self.mesh_surface_face_centers = system_two.face_centers
         (
             self.position_idx_array,
             self.face_idx_array,
             self.element_position,
-        ) = find_contact_faces_idx(
+        ) = find_contact_faces_idx_xyz(
             self.faces_grid,
             self.mesh_surface_x_min,
             self.mesh_surface_y_min,
+            self.mesh_surface_z_min,
             self.grid_size,
             system_one.position_collection,
         )
@@ -393,6 +523,36 @@ class RodMeshSurfaceContactWithGridMethod(NoContact):
         )
 
 
+class RodMeshSurfaceContactWithGridMethodWithContactFlag(
+    RodMeshSurfaceContactWithGridMethod
+):
+
+    def __init__(
+        self,
+        k: float,
+        nu: float,
+        faces_grid: dict,
+        grid_size: float,
+        surface_tol=1e-4,
+        contact_flag: list[bool] = [False],
+        contact_flag_id: int = 0,
+    ):
+        super().__init__(
+            k,
+            nu,
+            faces_grid,
+            grid_size,
+            surface_tol=surface_tol,
+        )
+        self.contact_flag = contact_flag
+        self.contact_flag_id = contact_flag_id
+
+    def apply_contact(
+        self, system_one: RodType, system_two: AllowedContactType
+    ) -> tuple:
+        pass
+
+
 class JoinableRodSphereContact(RodSphereContact):
 
     def __init__(
@@ -401,9 +561,9 @@ class JoinableRodSphereContact(RodSphereContact):
         nu: float,
         velocity_damping_coefficient=0.0,
         friction_coefficient=0.0,
-        index: int = -1,
+        index: Union[int, np.ndarray] = -1,
         action_flags: list[bool] = [False],
-        attach_flags: list[bool] = [False],
+        attach_flags: list[bool] = None,
         flag_id: int = 0,
         collision: bool = True,
         eps: float = 1e-3

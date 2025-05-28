@@ -5,11 +5,6 @@ import numpy as np
 import yaml
 
 
-def save_json(data, file_path: str, **kwargs):
-    with open(file_path, "w") as f:
-        json.dump(data, f, **kwargs)
-
-
 def load_yaml(file_path: str):
     with open(file_path, "r") as f:
         data = yaml.safe_load(f)
@@ -159,8 +154,3 @@ def isnan_check(array: np.ndarray) -> bool:
     This version: 2.24 µs ± 96.1 ns per loop
     """
     return np.isnan(array).any()
-
-
-if __name__ == "__main__":
-    theta = np.array([0, 0, 0])
-    w(theta)
