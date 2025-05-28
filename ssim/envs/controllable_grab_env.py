@@ -3,8 +3,8 @@ __all__ = [
     "ControllableGrabEnvironment",
 ]
 
-from collections import defaultdict
 import copy
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -13,20 +13,31 @@ import numpy as np
 from elastica import OneEndFixedRod, RigidBodyBase
 
 from ..arguments import (
-    RodArguments, RodControllerArgumets, MeshSurfaceArguments,
-    SimulatorArguments, SphereArguments, SuperArguments
+    MeshSurfaceArguments,
+    RodArguments,
+    RodControllerArgumets,
+    SimulatorArguments,
+    SphereArguments,
+    SuperArguments,
 )
 from ..components import (
-    MuscleTorquesWithVaryingBetaSplines, RigidBodyAnalyticalLinearDamper,
-    JoinableRodSphereContact, RodMeshSurfaceContactWithGridMethod
+    JoinableRodSphereContact,
+    MuscleTorquesWithVaryingBetaSplines,
+    RigidBodyAnalyticalLinearDamper,
+    RodMeshSurfaceContactWithGridMethod,
 )
-from ..utils import (
-    compute_quaternion_from_matrix, compute_rotation_matrix, isnan_check
-)
-from .base_envs import RodControlMixin, FetchableRodObjectsEnvironment, SimulatedEnvironment
+from ..components.contact import surface_grid_xyz
 from ..components.surface.mesh_surface import MeshSurface
-from ..components.contact import surface_grid
-from stl import mesh
+from ..utils import (
+    compute_quaternion_from_matrix,
+    compute_rotation_matrix,
+    isnan_check,
+)
+from .base_envs import (
+    FetchableRodObjectsEnvironment,
+    RodControlMixin,
+    SimulatedEnvironment,
+)
 
 
 @dataclass
@@ -202,8 +213,9 @@ class ControllableGrabEnvironment(
                     eps=1
                 )
             elif isinstance(obj, MeshSurface):
-                mesh_data = mesh.Mesh.from_file(obj.model_path)
-                faces_grid = surface_grid(mesh_data.vectors, 0.1)
+                grid_size = np.min(obj.mesh_scale) / 10
+                # faces: (dim, n_faces, n_points)
+                faces_grid = surface_grid_xyz(obj.faces, grid_size)
                 faces_grid["model_path"] = obj.model_path
                 faces_grid["grid_size"] = 0.1
                 faces_grid["surface_reorient"] = obj.mesh_orientation
