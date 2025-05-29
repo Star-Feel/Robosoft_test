@@ -17,7 +17,7 @@ from ssim.utils import load_json, load_yaml
 
 def main():
     os.chdir("/data/wjs/SoftRoboticaSimulator")
-    data_path = "./work_dirs/rod_control_data/full/26/info.json"
+    data_path = "./work_dirs/rod_control_data/full/0/info.json"
     work_dir = "./work_dirs/rod_control_demo"
     info = load_json(data_path)
     # Generate data setting
@@ -28,6 +28,7 @@ def main():
     with open(info["state_action"], "rb") as f:
         state_action = pickle.load(f)
     config = load_yaml(config_path)
+    # print(config)
     object_config = config["objects"][info["object_id"]]
     target_config = config["objects"][info["target_id"]]
 
@@ -75,17 +76,17 @@ def main():
                         np.array(target_config["center"]),
                         np.array([0, np.random.uniform(np.pi / 6, np.pi / 3), 0]),
                     )
-            # else:
-            #     eps = (object_config["scale"][0] * object_config["mesh_span"])/ 2
-            #     if env.is_achieve(eps):
-            #         print('Rod end point arrives at object.')
-            #         if not any(env.action_flags):
-            #             env.action_flags[info["object_id"]] = True
+            else:
+                eps = (object_config["scale"][0] * object_config["mesh_span"])/ 2
+                if env.is_achieve(eps):
+                    print('Rod end point arrives at object.')
+                    if not any(env.action_flags):
+                        env.action_flags[info["object_id"]] = True
 
-            #         env.set_target(
-            #             np.array(target_config["center"]),
-            #             np.array([0, np.random.uniform(np.pi / 6, np.pi / 3), 0]),
-            #         )
+                    env.set_target(
+                        np.array(target_config["center"]),
+                        np.array([0, np.random.uniform(np.pi / 6, np.pi / 3), 0]),
+                    )
 
             if any(env.action_flags) and env.is_achieve(object_config["radius"]):
                 print('Rod end point arrives at object.')

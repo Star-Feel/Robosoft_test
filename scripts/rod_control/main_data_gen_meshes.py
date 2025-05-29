@@ -106,7 +106,7 @@ def get_random_sphere(assets: dict[ASSET], name: str = None) -> tuple[str, str, 
 
 def main():
     # for i in tqdm(range(N)):
-    i = 26
+    i = 0
     local_full_dir = osp.join(FULL_DIR, f"{i}")
     local_target_dir = osp.join(TARGET_DIR, f"{i}")
     
@@ -149,7 +149,7 @@ def main():
         spheres[target_id] = mesh_target_dict
 
     # 确定除target外的物体信息
-    for j in range(len(spheres) - 1):
+    for j in range(len(spheres)):
         if j == target_id:
             continue
         sphere = spheres[j]

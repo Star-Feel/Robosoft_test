@@ -598,6 +598,7 @@ class FetchableRodObjectsEnvironment(
                     "rod_position": self.shearable_rod.position_collection,
                     "rod_radius": self.shearable_rod.radius,
                 },
+                save_script_file = True,
                 save_img=False,
             )
 
