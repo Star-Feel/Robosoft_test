@@ -83,7 +83,6 @@ class BlenderRenderer:
         plane.data.materials.append(material)
         plane.rotation_euler[1] = math.radians(89)  # 将角度转换为弧度
 
-        
         # scene settings
         scene = bpy.context.scene
         scene.render.engine = 'BLENDER_EEVEE_NEXT'  # 使用 Eevee 引擎
@@ -147,7 +146,7 @@ class BlenderRenderer:
             print(f"rendering {pov_file} ({i+1}/{len(pov_files)})")
 
             # 只更新软体机器人和目标物体的部分，保留相机和其他静态物体
-            
+
             self.update_snake_only(pov_path)
 
             # 渲染当前帧
@@ -270,7 +269,7 @@ class BlenderRenderer:
                     tar_idx = 1
                 elif shape == "conbyfr2":
                     tar_idx = 3
-                else: 
+                else:
                     tar_idx = 0
                 obj_path = ASSET_PATHS[shape]
 
@@ -355,7 +354,9 @@ class BlenderRenderer:
                 elif 'Cylinder' in obj.name:
                     obj.rotation_euler = (0, 0, math.radians(-90))
                 else:
-                    obj.rotation_euler = (math.radians(90), 0, math.radians(90))
+                    obj.rotation_euler = (
+                        math.radians(90), 0, math.radians(90)
+                    )
 
                 # 计算物体边界盒的对角线长度（作为"直径"）
                 local_bbox_corners = [

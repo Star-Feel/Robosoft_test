@@ -5,39 +5,24 @@ from typing import TypedDict
 
 import numpy as np
 import trimesh
-from tqdm import tqdm
+import tqdm
 import sys
 
-sys.path.append("/data/wjs/wrp/SoftRoboticaSimulator")
+# sys.path.append("/data/wjs/wrp/SoftRoboticaSimulator")
 
 from ssim.utils import load_yaml, save_yaml, load_json
 
-N = 1
-
-# FULL_DIR = "./work_dirs/navigation_data/full"
-# TARGET_DIR = "./work_dirs/navigation_data/full"
-# ASSETS_DIR = "./assets"
-
-import copy
-import os
-import os.path as osp
-from typing import TypedDict
-
-import numpy as np
-import trimesh
-from tqdm import tqdm
-import sys
-
-sys.path.append("./SoftRoboticaSimulator")
-
-from ssim.utils import load_yaml, save_yaml, load_json
-
-N = 1
+N = 100
 
 FULL_DIR = "./work_dirs/rod_control_data/full"
 TARGET_DIR = "./work_dirs/rod_control_data/full"
 BASE_ASSETS_DIR = "./assets"
 ASSETS_DIR = "./scene_assets/living_room"
+
+# FULL_DIR = "/data/wjs/SoftRoboticaSimulator/work_dirs/rod_control_data/full"
+# TARGET_DIR = "/data/wjs/SoftRoboticaSimulator/work_dirs/rod_control_data/full"
+# BASE_ASSETS_DIR = "/data/wjs/SoftRoboticaSimulator/assets"
+# ASSETS_DIR = "/data/wjs/SoftRoboticaSimulator/scene_assets/living_room"
 
 
 class ASSET(TypedDict):
@@ -84,17 +69,6 @@ def get_assets_with_bounding_boxes():
     assets = {}
     for root, _, files in os.walk(ASSETS_DIR):
         for file in files:
-            # if file.endswith(".stl"):
-            #     asset_path = os.path.join(root, file)
-            #     asset_name = osp.splitext(file)[0]
-
-            #     # Load the mesh and compute the bounding box
-            #     mesh = trimesh.load(asset_path)
-            #     bounding_box = mesh.bounds.tolist(
-            #     )  # Store as a list for JSON compatibility
-
-            #     # Map asset name to its path and bounding box
-            #     assets[asset_name] = ASSET(path=asset_path, bbox=bounding_box)
 
             if file.endswith(".obj"):
                 asset_path = os.path.join(root, file)
@@ -147,7 +121,7 @@ def get_random_sphere(assets: dict[ASSET],
 
 
 def main():
-    for i in tqdm(range(N)):
+    for i in tqdm.tqdm(range(N)):
         local_full_dir = osp.join(FULL_DIR, f"{i}")
         local_target_dir = osp.join(TARGET_DIR, f"{i}")
 
@@ -165,17 +139,6 @@ def main():
 
         sphere_target_name = None
         blend_mesh_target_name = None
-
-        sphere_target_name, _, _ = get_random_sphere(assets)
-        sphere_target_dict = copy.deepcopy(SPHERE_TEMP)
-        sphere_target_dict["shape"] = "target_surface"
-        sphere_target_dict["density"] = spheres[target_obj_id]['density']
-        sphere_target_dict["center"] = spheres[target_obj_id]['center']
-        sphere_target_dict["radius"] = spheres[target_obj_id]['radius']
-        spheres[target_obj_id] = sphere_target_dict
-
-        del sphere_target_dict
-        
 
         # 确定target信息
         if np.random.rand() < 1 / 2:
@@ -250,7 +213,6 @@ def main():
                 spheres[j] = mesh_dict
 
                 del mesh_dict
-                
 
         save_yaml(config, osp.join(local_target_dir, "config.yaml"))
 
@@ -258,5 +220,3 @@ def main():
 if __name__ == "__main__":
     np.random.seed(0)
     main()
-
-
