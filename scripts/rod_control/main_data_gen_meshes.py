@@ -164,10 +164,9 @@ def main():
             mesh_target_dict["mesh_path"] = mesh_target_path
             mesh_target_dict["shape"] = blend_mesh_target_name
 
-            max_mesh_span = float(np.linalg.norm(mesh_target_span))
+            # max_mesh_span = float(np.linalg.norm(mesh_target_span))
+            max_mesh_span = float(np.max(mesh_target_span))
             scale = round(2 * radius / max_mesh_span, 3)
-            mesh_y_height = mesh_target_span[1] * scale
-            center[1] = 0.95 * mesh_y_height / 2  # 低一点，保证不会从底下钻过去
             mesh_target_dict["center"] = center
             mesh_target_dict["scale"] = [scale] * 3
             spheres[target_id] = mesh_target_dict
@@ -205,8 +204,6 @@ def main():
 
                 max_mesh_span = float(np.linalg.norm(mesh_span))
                 scale = round(2 * radius / max_mesh_span, 3)
-                mesh_y_height = mesh_span[1] * scale
-                center[1] = 0.95 * mesh_y_height / 2  # 低一点，保证不会从底下钻过去
                 mesh_dict["center"] = center
                 mesh_dict["scale"] = [scale] * 3
 

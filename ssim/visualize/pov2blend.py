@@ -337,7 +337,7 @@ class BlenderRenderer:
                     map(float,
                         mesh_data_match.group(1).split(','))
                 )
-                pos = self.coord_pov2blend(*pos)
+                pos = self.coord_pov2blend(*origin_pos)
                 scale = float(mesh_scale.group(1))
 
                 obj = bpy.context.selected_objects[4 + len(sphere_matchs)
@@ -379,11 +379,6 @@ class BlenderRenderer:
                 # 0.95是安全系数，可以根据需要调整
                 safe_scale = scale_factor * 1
                 obj.scale = (safe_scale, safe_scale, safe_scale)
-
-                # 根据高度调整中心位置
-                y_height = dimensions[2] * safe_scale
-                shiftted_pos = (origin_pos[0], y_height / 2, origin_pos[2])
-                pos = self.coord_pov2blend(*shiftted_pos)
 
                 # 将物体位置设回球体中心
                 obj.location = tuple(pos)
