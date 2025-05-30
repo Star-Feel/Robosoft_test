@@ -264,15 +264,20 @@ class BlenderRenderer:
                 shape = shape_match.group(1)
                 if shape == "target_surface":
                     bpy.ops.mesh.primitive_plane_add(
-                        size=0.05, enter_editmode=False, align='WORLD', location=(0, -5, 0)
+                        size=0.05,
+                        enter_editmode=False,
+                        align='WORLD',
+                        location=(0, -5, 0)
                     )
                     plane = bpy.context.object
                     plane.name = "TargetPlane"
                     plane.rotation_euler[1] = math.radians(89)  # 将角度转换为弧度
-                    material = bpy.data.materials.new(name="TargetPlaneMaterial")
+                    material = bpy.data.materials.new(
+                        name="TargetPlaneMaterial"
+                    )
                     material.diffuse_color = (0, 0, 0, 1.0)  # 设置为白色
                     plane.data.materials.append(material)
-                   
+
                 else:
                     obj_path = ASSET_PATHS[shape]
 
@@ -437,7 +442,7 @@ class BlenderRenderer:
                 angle = float(60)
                 # 转换 POV-Ray 角度为 Blender 焦距
                 cam = bpy.data.objects['Camera']
-                cam.data.lens = 60 
+                cam.data.lens = 60
                 # / math.tan(
                 #     math.radians(angle / 2)
                 # )
@@ -445,16 +450,25 @@ class BlenderRenderer:
             # 提取相机朝向
             look_at_match = re.search(r'look_at\s*<([^>]*)>', camera_text)
             if look_at_match:
-                target_x, target_y, target_z = map(float, look_at_match.group(1).split(','))
-                target_x, target_y, target_z = self.coord_pov2blend(target_x, target_y, target_z)
+                target_x, target_y, target_z = map(
+                    float,
+                    look_at_match.group(1).split(',')
+                )
+                target_x, target_y, target_z = self.coord_pov2blend(
+                    target_x, target_y, target_z
+                )
 
                 # 创建一个目标空物体
-                bpy.ops.object.empty_add(type='PLAIN_AXES', location=(target_x, target_y, target_z))
+                bpy.ops.object.empty_add(
+                    type='PLAIN_AXES', location=(target_x, target_y, target_z)
+                )
                 target = bpy.context.object
                 target.name = "CameraTarget"
 
                 # 计算相机和目标物体之间的向量
-                direction = mathutils.Vector((target_x - x, target_y - y, target_z - z))
+                direction = mathutils.Vector(
+                    (target_x - x, target_y - y, target_z - z)
+                )
 
                 # 将相机向目标物体靠近一定比例的距离，例如靠近 50%
                 move_distance = direction * 0.3
@@ -665,6 +679,7 @@ class BlenderRenderer:
             )
 
             pos = map(float, sphere_data_match.group(1).split(','))
+            pos = self.coord_pov2blend(*pos)
             obj = bpy.context.selected_objects[idx + 4]
             obj.location = tuple(pos)
         for idx, mesh_match in enumerate(mesh_matchs):
