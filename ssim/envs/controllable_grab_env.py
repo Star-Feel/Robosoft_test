@@ -217,7 +217,7 @@ class ControllableGrabEnvironment(
                 # faces: (dim, n_faces, n_points)
                 faces_grid = surface_grid_xyz(obj.faces, grid_size)
                 faces_grid["model_path"] = obj.model_path
-                faces_grid["grid_size"] = 0.1
+                faces_grid["grid_size"] = grid_size
                 faces_grid["surface_reorient"] = obj.mesh_orientation
                 self.simulator.detect_contact_between(
                     self.shearable_rod, obj).using(
@@ -225,7 +225,7 @@ class ControllableGrabEnvironment(
                         k=1e4,  # 接触刚度系数
                         nu=30,  # 阻尼系数
                         faces_grid=faces_grid,
-                        grid_size=0.1,
+                    grid_size=grid_size,
                         surface_tol=1e-2,
                     )
 
