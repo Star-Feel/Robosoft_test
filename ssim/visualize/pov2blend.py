@@ -6,6 +6,7 @@ import time
 import bpy
 import mathutils
 import tqdm
+import numpy as np
 
 ASSET_PATHS = {
     "Obj": "./scene_assets/living_room/soccer/Obj.obj",
@@ -14,6 +15,8 @@ ASSET_PATHS = {
     "Coffee_cup_withe_": "./scene_assets/living_room/Coffee_cup_withe_obj/Coffee_cup_withe_.obj",
     "pillows_obj": "./scene_assets/living_room/OBJ_PILLOWS/pillows_obj.obj",
     "Book_by_Peter_Iliev_obj": "./scene_assets/living_room/Book_by_Peter_Iliev_obj/Book_by_Peter_Iliev_obj.obj",
+    "Cone_Buoy": "./scene_assets/living_room/Cone_Buoy/conbyfr.obj",
+    "Cone_Buoy_2": "./scene_assets/living_room/Cone_Buoy_2/conbyfr2.obj",
 }
 
 
@@ -78,7 +81,7 @@ class BlenderRenderer:
         material = bpy.data.materials.new(name="GroundMaterial")
         material.diffuse_color = (0.5, 0.5, 0, 1.0)  # 设置为白色
         plane.data.materials.append(material)
-        plane.rotation_euler[1] = math.radians(85)  # 将角度转换为弧度
+        plane.rotation_euler[1] = math.radians(89)  # 将角度转换为弧度
 
         
         # scene settings
@@ -144,10 +147,8 @@ class BlenderRenderer:
             print(f"rendering {pov_file} ({i+1}/{len(pov_files)})")
 
             # 只更新软体机器人和目标物体的部分，保留相机和其他静态物体
-            if i == 0:
-                self.update_snake_only(pov_path, target_id=None)
-            else:
-                self.update_snake_only(pov_path, target_id)
+            
+            self.update_snake_only(pov_path)
 
             # 渲染当前帧
             bpy.context.scene.frame_set(frame_num)
@@ -164,42 +165,39 @@ class BlenderRenderer:
             f"批量渲染完成，总用时: {total_time:.2f}秒，平均每帧: {total_time/len(pov_files):.2f}秒"
         )
 
-    def Single_step_rendering(self, current_step, action_flag, target_id, pov_dir, output_dir):
+    def single_step_rendering(
+        self,
+        current_step: int,
+        pov_script: dict[str, str],
+        output_dir: str,
+        save_img: bool = True,
+    ) -> np.ndarray:
 
         os.makedirs(output_dir, exist_ok=True)
 
-        pov_file = os.path.join(pov_dir, "frame_00000.pov")
-
         # 加载文件来设置相机、光源和静态对象
-        self.load_pov_settings(pov_file)
+        self.load_pov_settings(None, pov_script)
 
-        # 处理每个 POV 文件
-        total_start_time = time.time()
-
-        print(f"rendering {pov_file}")
-        
-        if any(action_flag):
-            self.update_snake_only(pov_file, target_id)
-        else:
-            # 只更新蛇的部分，保留相机和其他静态物体
-            self.update_snake_only(pov_file, None)
-        # self.set_target_obj(target_id)
+        # 只更新蛇的部分，保留相机和其他静态物体
+        self.update_snake_only(None, pov_script)
 
         # 渲染当前帧
         bpy.context.scene.frame_set(current_step)
-        bpy.ops.render.render()
+        bpy.ops.render.render(write_still=False)
+        render_result = bpy.data.images["Render Result"]
 
-        # 保存渲染结果
-        output_file = os.path.join(output_dir, f"step_{current_step:05d}.png")
-        bpy.data.images["Render Result"].save_render(output_file)
-        print(output_file)
+        output_file = os.path.join(output_dir, "temp.png")
+        render_result.save_render(output_file)
+        # # 读取保存的渲染结果为numpy数组
+        # # 使用 PIL 打开保存的渲染结果
+        # with Image.open(output_file) as img:
+        #     img_array = np.array(img)
+        # with open(output_file, "rb") as f:
+        #     img_data = np.frombuffer(f.read(), dtype=np.uint8)
+        # img_array = np.array(img_data).reshape(height, width, 4)
+        # return img_array
 
-        # bpy.ops.memory_statistics()
-
-        total_time = time.time() - total_start_time
-        print(f"单步渲染完成，用时: {total_time:.2f}秒")
-
-    def update_snake_only(self, pov_file, target_id):
+    def update_snake_only(self, pov_file):
         """只更新蛇的部分，保留其他场景元素不变。
 
         Args:
@@ -215,7 +213,7 @@ class BlenderRenderer:
                 bpy.data.objects.remove(obj, do_unlink=True)
 
         # 重新创建杆
-        self.set_snake(target_id)
+        self.set_snake()
 
     def load_pov_settings(self, pov_file, obj_path=None):
         self.pov_file = pov_file
@@ -255,11 +253,17 @@ class BlenderRenderer:
 
                 mesh_shape = re.search(r'shape\s+([^\s>]+)', mesh_match)
                 shape = mesh_shape.group(1)
+                if shape == "Cone_Buoy":
+                    tar_idx = 1
+                elif shape == "Cone_Buoy_2":
+                    tar_idx = 3
+                else: 
+                    tar_idx = 0
                 obj_path = ASSET_PATHS[shape]
 
                 bpy.ops.wm.obj_import(filepath=obj_path)
                 for idx, obj in enumerate(bpy.context.selected_objects):
-                    if idx == 0:
+                    if idx == tar_idx:
                         continue
                     else:
                         bpy.data.objects.remove(obj, do_unlink=True)
@@ -297,7 +301,7 @@ class BlenderRenderer:
 
                 # 应用缩放（略微减小以确保不会超出）
                 # 0.95是安全系数，可以根据需要调整
-                safe_scale = scale_factor * 1.8
+                safe_scale = scale_factor
                 obj.scale = (safe_scale, safe_scale, safe_scale)
 
                 # 将物体位置设回球体中心
@@ -314,10 +318,12 @@ class BlenderRenderer:
             mesh_data_match = re.search(r'translate\s*<([^>]*)>', mesh_match)
             mesh_scale = re.search(r'scale\s*([0-9.]+)', mesh_match)
             if mesh_data_match:
-                pos = map(float, mesh_data_match.group(1).split(','))
+                origin_pos = list(
+                    map(float,
+                        mesh_data_match.group(1).split(','))
+                )
                 pos = self.coord_pov2blend(*pos)
                 scale = float(mesh_scale.group(1))
-                # scale = 0.5
 
                 obj = bpy.context.selected_objects[4 + len(sphere_matchs)
                                                    + idx]
@@ -325,35 +331,42 @@ class BlenderRenderer:
                 if "Cup" in obj.name:
                     obj.rotation_euler = (math.radians(90), 0, 0)
                 elif 'Coffee_cup_withe' in obj.name:
-                    obj.rotation_euler = (0, 0, math.radians(90))
-                elif 'Book_by_Peter_Iliev_obj' in obj.name:
                     obj.rotation_euler = (0, math.radians(90), 0)
+                elif 'Book_by_Peter_Iliev_obj' in obj.name:
+                    obj.rotation_euler = (math.radians(90), 0, 0)
                 elif 'big_pillow' in obj.name:
-                    obj.rotation_euler = (0, 0, 0)
+                    obj.rotation_euler = (math.radians(90), 0, 0)
+                elif 'Cylinder' in obj.name:
+                    obj.rotation_euler = (0, 0, math.radians(-90))
                 else:
-                    obj.rotation_euler = (
-                        math.radians(90), 0, math.radians(90)
-                    )
-                # 如何将物体限制在球体内？
+                    obj.rotation_euler = (math.radians(90), 0, math.radians(90))
 
                 # 计算物体边界盒的对角线长度（作为"直径"）
                 local_bbox_corners = [
                     mathutils.Vector(corner) for corner in obj.bound_box
                 ]
-                max_dimension = max(
-                    (local_bbox_corners[0] - local_bbox_corners[6]).length,
-                    (local_bbox_corners[1] - local_bbox_corners[7]).length,
-                    (local_bbox_corners[2] - local_bbox_corners[4]).length
-                )
+                dimensions = [
+                    (local_bbox_corners[0]
+                     - local_bbox_corners[6]).length,  # z
+                    (local_bbox_corners[1]
+                     - local_bbox_corners[7]).length,  # x
+                    (local_bbox_corners[2] - local_bbox_corners[4]).length  # y
+                ]
+                max_dimension = np.linalg.norm(dimensions)
 
                 # 计算需要的缩放系数来使物体恰好适合球体
                 # 使用直径的一半（半径）与球体半径比较
-                scale_factor = (scale * 2) / max_dimension
+                scale_factor = scale / max_dimension
 
                 # 应用缩放（略微减小以确保不会超出）
                 # 0.95是安全系数，可以根据需要调整
-                safe_scale = scale_factor * 0.9
+                safe_scale = scale_factor * 1
                 obj.scale = (safe_scale, safe_scale, safe_scale)
+
+                # 根据高度调整中心位置
+                y_height = dimensions[2] * safe_scale
+                shiftted_pos = (origin_pos[0], y_height / 2, origin_pos[2])
+                pos = self.coord_pov2blend(*shiftted_pos)
 
                 # 将物体位置设回球体中心
                 obj.location = tuple(pos)
@@ -474,7 +487,7 @@ class BlenderRenderer:
                     else:
                         sphere.data.materials.append(material)
 
-    def set_snake(self, target_id=None):
+    def set_snake(self):
         # 处理球扫描（sphere_sweep）
         sphere_sweep_matches = re.findall(
             r'sphere_sweep\s*{([^}]*)}', self.pov_content, re.DOTALL
@@ -586,13 +599,6 @@ class BlenderRenderer:
 
                     # 指定材质
                     # curve_obj.data.materials.append(material)
-
-        if target_id:
-            pos = tuple(map(float, point_match[0].split(',')))
-            pos = self.coord_pov2blend(*pos)
-
-            obj = bpy.context.selected_objects[target_id + 4]
-            obj.location = tuple(pos)
 
     def render(self):
         bpy.context.scene.camera = bpy.data.objects['Camera']

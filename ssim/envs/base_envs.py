@@ -526,14 +526,14 @@ class FetchableRodObjectsEnvironment(
                         radius=np.squeeze(object_callback['radius'][i]),
                     )
                 elif isinstance(object_, MeshSurface):
-                    scale = np.mean(object_.mesh_scale)
+                    scale = np.linalg.norm(object_.mesh_scale)
                     renderer.add_stage_object(
                         object_type='mesh',
                         name=f'mesh{id_}',
                         shape=str(self.object_configs[id_].shape),
                         mesh_name='cube_mesh',
                         position=np.squeeze(object_callback['position'][i]),
-                        scale=scale,  # TODO
+                        scale=scale,  
                         matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
                     )
             renderer.render_single_step(
@@ -556,7 +556,8 @@ class FetchableRodObjectsEnvironment(
         height=540,
         current_step=0,
         interval=0,
-        target_id=0
+        target_id=0,
+        save_img: bool = False,
     ):
         if current_step % interval == 0:
             top_view_dir = os.path.join(output_images_dir, "top")
@@ -584,7 +585,7 @@ class FetchableRodObjectsEnvironment(
                         radius=np.squeeze(object_callback['radius'][0]),
                     )
                 elif isinstance(object_, MeshSurface):
-                    scale = np.mean(object_.mesh_scale)
+                    scale = np.linalg.norm(object_.mesh_scale)
                     renderer.add_stage_object(
                         object_type='mesh',
                         name=f'mesh{id_}',
@@ -595,21 +596,19 @@ class FetchableRodObjectsEnvironment(
                         matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
                     )
 
-            # print(self.shearable_rod.position_collection)
-            # print(self.shearable_rod.radius)
-
-            renderer.render_single_step(
+            pov_scripts = renderer.render_single_step(
                 data={
                     "rod_position": self.shearable_rod.position_collection,
                     "rod_radius": self.shearable_rod.radius,
                 },
-                save_script_file=True,
                 save_img=False,
             )
 
-            blender_renderer.Single_step_rendering(
-                current_step, self.action_flags, target_id, top_view_dir,
-                top_view_dir
+            rendered_image = blender_renderer.single_step_rendering(
+                current_step,
+                pov_scripts["top"],
+                top_view_dir,
+                save_img,
             )
 
 
