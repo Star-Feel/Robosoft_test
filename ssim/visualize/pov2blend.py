@@ -433,16 +433,20 @@ class BlenderRenderer:
             angle_match = re.search(r'angle\s*(\d+)', camera_text)
             if angle_match:
                 angle = float(angle_match.group(1))
+                angle = float(60)
                 # 转换 POV-Ray 角度为 Blender 焦距
-                bpy.data.cameras['Camera'].lens = 16 / math.tan(
-                    math.radians(angle / 2)
-                )
+                cam = bpy.data.objects['Camera']
+                cam.data.lens = 60 
+                # / math.tan(
+                #     math.radians(angle / 2)
+                # )
 
             # 提取相机朝向
             look_at_match = re.search(r'look_at\s*<([^>]*)>', camera_text)
             if look_at_match:
                 target_x, target_y, target_z = map(float, look_at_match.group(1).split(','))
                 target_x, target_y, target_z = self.coord_pov2blend(target_x, target_y, target_z)
+
                 # 创建一个目标空物体
                 bpy.ops.object.empty_add(type='PLAIN_AXES', location=(target_x, target_y, target_z))
                 target = bpy.context.object
@@ -450,8 +454,9 @@ class BlenderRenderer:
 
                 # 计算相机和目标物体之间的向量
                 direction = mathutils.Vector((target_x - x, target_y - y, target_z - z))
+
                 # 将相机向目标物体靠近一定比例的距离，例如靠近 50%
-                move_distance = direction * 0.7
+                move_distance = direction * 0.3
                 cam.location += move_distance
 
                 # 添加 Track To 约束
