@@ -39,7 +39,8 @@ class StageObject:
             return "rgb<{},{},{}>".format(*color)
         else:
             raise NotImplementedError(
-                "Only string-type color or RGB input is implemented")
+                "Only string-type color or RGB input is implemented"
+            )
 
     def _position2str(self, position):
         assert len(position) == 3
@@ -139,13 +140,15 @@ class Light(StageObject):
 
 class Box(StageObject):
 
-    def __init__(self,
-                 name,
-                 min_corner,
-                 max_corner,
-                 rotate=[0, 0, 0],
-                 texture='T_Stone25',
-                 scale=4):
+    def __init__(
+        self,
+        name,
+        min_corner,
+        max_corner,
+        rotate=[0, 0, 0],
+        texture='T_Stone25',
+        scale=4
+    ):
         self.name = name
         self.min_corner = min_corner
         self.max_corner = max_corner
@@ -173,17 +176,26 @@ class Box(StageObject):
 
 class Sphere(StageObject):
 
-    def __init__(self, position, radius, shape, color='Yellow'):
+    def __init__(
+        self,
+        position,
+        radius,
+        shape,
+        object_name=None,
+        color='Yellow',
+    ):
         self.position = position
         self.radius = radius
         self.color = color
         self.shape = shape
+        self.object_name = object_name
         super().__init__()
 
     def update_script(self):
         position = self._position2str(self.position)
         cmds = []
         cmds.append("sphere {")
+        cmds.append(f"\tobject_name {self.object_name}")
         cmds.append(f"\t{position}, {self.radius}")
         cmds.append("\ttexture {")
         cmds.append("\t\tpigment {")
@@ -199,13 +211,13 @@ class MeshObject(StageObject):
 
     def __init__(
         self,
-        mesh_name,
+        object_name,
         position,
         scale,
         shape,
         matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
     ):
-        self.mesh_name = mesh_name
+        self.object_name = object_name
         self.position = position
         self.matrix = matrix
         self.scale = scale
@@ -217,7 +229,7 @@ class MeshObject(StageObject):
         matrix = self._matrix2str(self.matrix)
         cmds = []
         cmds.append("object {")
-        cmds.append(f"\t{self.mesh_name}")
+        cmds.append(f"\tobject_name {self.object_name}")
         cmds.append(f"\tscale {self.scale}")
         cmds.append(f"\tmatrix {matrix}")
         cmds.append(f"\ttranslate {position}")

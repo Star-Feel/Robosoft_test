@@ -21,6 +21,9 @@ ASSET_PATHS = {
 
 
 class BlenderRenderer:
+    sphere_parttern = r'sphere\s*{([^}]*)}'
+    mesh_pattern = r'object\s*\{[^}]*\}'
+    rod_parttern = r'sphere_sweep\s*{([^}]*)}'
 
     def __init__(self, output_dir="renders"):
         self.set_environment()
@@ -108,7 +111,7 @@ class BlenderRenderer:
         z_prime = y
         return x_prime, y_prime, z_prime
 
-    def batch_rendering(self, pov_dir, output_dir, target_id):
+    def batch_rendering(self, pov_dir, output_dir):
         """批量渲染指定目录中的所有 POV 文件。
 
         Args:
@@ -147,7 +150,7 @@ class BlenderRenderer:
 
             # 只更新软体机器人和目标物体的部分，保留相机和其他静态物体
 
-            self.update_snake_only(pov_path)
+            self.update_snake_and_target_object(pov_path)
 
             # 渲染当前帧
             bpy.context.scene.frame_set(frame_num)
@@ -178,7 +181,7 @@ class BlenderRenderer:
         self.load_pov_settings(None, pov_script)
 
         # 只更新蛇的部分，保留相机和其他静态物体
-        self.update_snake_only(None, pov_script)
+        self.update_snake_and_target_object(pov_script)
 
         # 渲染当前帧
         bpy.context.scene.frame_set(current_step)
@@ -214,6 +217,25 @@ class BlenderRenderer:
         # 重新创建杆
         self.set_snake()
 
+    def update_snake_and_target_object(self, pov_file):
+        """只更新蛇和目标物体的部分，保留其他场景元素不变。
+
+        Args:
+            pov_file (str): POV 文件路径
+        """
+        # 读取新的 POV 文件内容
+        with open(pov_file, 'r') as file:
+            self.pov_content = file.read()
+
+        # 删除所有现有的杆对象
+        for idx, obj in enumerate(bpy.data.objects):
+            if obj.name.startswith('SphereSweep_'):
+                bpy.data.objects.remove(obj, do_unlink=True)
+
+        # 重新创建杆
+        self.set_snake()
+        self.update_target_object()
+
     def load_pov_settings(self, pov_file, obj_path=None):
         self.pov_file = pov_file
         with open(pov_file, 'r') as file:
@@ -227,10 +249,10 @@ class BlenderRenderer:
     def load_obj(self, obj_path=None):
         # obj_path == None, then load obj randomly
         sphere_matchs = re.findall(
-            r'sphere\s*{([^}]*)}', self.pov_content, re.DOTALL
+            self.sphere_parttern, self.pov_content, re.DOTALL
         )
         mesh_matchs = re.findall(
-            r'object\s*\{\s*cube_mesh[^}]*\}', self.pov_content, re.DOTALL
+            self.mesh_pattern, self.pov_content, re.DOTALL
         )
 
         if obj_path is None:
@@ -508,7 +530,7 @@ class BlenderRenderer:
     def set_snake(self):
         # 处理球扫描（sphere_sweep）
         sphere_sweep_matches = re.findall(
-            r'sphere_sweep\s*{([^}]*)}', self.pov_content, re.DOTALL
+            self.rod_parttern, self.pov_content, re.DOTALL
         )
         for i, sweep_text in enumerate(sphere_sweep_matches):
             # 提取类型和点数
@@ -617,6 +639,37 @@ class BlenderRenderer:
 
                     # 指定材质
                     # curve_obj.data.materials.append(material)
+
+    def update_target_object(self):
+        sphere_matchs = re.findall(
+            self.sphere_parttern, self.pov_content, re.DOTALL
+        )
+        mesh_matchs = re.findall(
+            self.mesh_pattern, self.pov_content, re.DOTALL
+        )
+
+        for idx, sphere_match in enumerate(sphere_matchs):
+            object_name = re.search(r'object_name (\w*)\n',
+                                    sphere_match).group(1)
+            if object_name != "target_object":
+                continue
+            sphere_data_match = re.search(
+                r'<([^>]*)>\s*,\s*([0-9.]+)', sphere_match
+            )
+
+            pos = map(float, sphere_data_match.group(1).split(','))
+            obj = bpy.context.selected_objects[idx + 4]
+            obj.location = tuple(pos)
+        for idx, mesh_match in enumerate(mesh_matchs):
+            object_name = re.search(r'object_name (\w*)\n',
+                                    mesh_match).group(1)
+            if object_name != "target_object":
+                continue
+            mesh_data_match = re.search(r'translate\s*<([^>]*)>', mesh_match)
+            origin_pos = list(map(float, mesh_data_match.group(1).split(',')))
+            pos = self.coord_pov2blend(*origin_pos)
+            obj = bpy.context.selected_objects[4 + len(sphere_matchs) + idx]
+            obj.location = tuple(pos)
 
     def render(self):
         bpy.context.scene.camera = bpy.data.objects['Camera']

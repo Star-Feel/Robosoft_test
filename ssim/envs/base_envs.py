@@ -517,11 +517,13 @@ class FetchableRodObjectsEnvironment(
             for object_ in self.objects:
                 id_ = self.object2id[object_]
                 object_callback = self.object_callbacks[id_]
+                object_name = "target_object" if id_ == target_id else "obstacle_object"
                 if isinstance(object_, ea.Sphere):
                     renderer.add_stage_object(
                         object_type='sphere',
                         name=f'sphere{id_}',
                         shape=str(self.object_configs[id_].shape),
+                        object_name=object_name,
                         position=np.squeeze(object_callback['position'][i]),
                         radius=np.squeeze(object_callback['radius'][i]),
                     )
@@ -531,9 +533,9 @@ class FetchableRodObjectsEnvironment(
                         object_type='mesh',
                         name=f'mesh{id_}',
                         shape=str(self.object_configs[id_].shape),
-                        mesh_name='cube_mesh',
+                        object_name=object_name,
                         position=np.squeeze(object_callback['position'][i]),
-                        scale=scale,  
+                        scale=scale,
                         matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
                     )
             renderer.render_single_step(
@@ -545,7 +547,7 @@ class FetchableRodObjectsEnvironment(
                 save_img=False,
             )
 
-        blender_renderer.batch_rendering(top_view_dir, top_view_dir, target_id)
+        blender_renderer.batch_rendering(top_view_dir, top_view_dir)
         renderer.create_video(only_top=True)
 
     def single_step_3d_blend(
