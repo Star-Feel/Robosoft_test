@@ -15,8 +15,8 @@ ASSET_PATHS = {
     "Coffee_cup_withe_": "./scene_assets/living_room/Coffee_cup_withe_obj/Coffee_cup_withe_.obj",
     "pillows_obj": "./scene_assets/living_room/OBJ_PILLOWS/pillows_obj.obj",
     "Book_by_Peter_Iliev_obj": "./scene_assets/living_room/Book_by_Peter_Iliev_obj/Book_by_Peter_Iliev_obj.obj",
-    "Cone_Buoy": "./scene_assets/living_room/Cone_Buoy/conbyfr.obj",
-    "Cone_Buoy_2": "./scene_assets/living_room/Cone_Buoy_2/conbyfr2.obj",
+    "conbyfr": "./scene_assets/living_room/Cone_Buoy/conbyfr.obj",
+    "conbyfr2": "./scene_assets/living_room/Cone_Buoy_2/conbyfr2.obj",
 }
 
 
@@ -240,22 +240,35 @@ class BlenderRenderer:
 
                 shape_match = re.search(r'shape\s+([^\s>]+)', sphere_match)
                 shape = shape_match.group(1)
-                obj_path = ASSET_PATHS[shape]
+                if shape == "target_surface":
+                    bpy.ops.mesh.primitive_plane_add(
+                        size=0.05, enter_editmode=False, align='WORLD', location=(0, -5, 0)
+                    )
+                    plane = bpy.context.object
+                    plane.name = "TargetPlane"
+                    plane.rotation_euler[1] = math.radians(89)  # 将角度转换为弧度
+                    material = bpy.data.materials.new(name="TargetPlaneMaterial")
+                    material.diffuse_color = (0, 0, 0, 1.0)  # 设置为白色
+                    plane.data.materials.append(material)
+                   
+                else:
+                    obj_path = ASSET_PATHS[shape]
 
-                bpy.ops.wm.obj_import(filepath=obj_path)
-                for idx, obj in enumerate(bpy.context.selected_objects):
-                    if idx == 0:
-                        continue
-                    else:
-                        bpy.data.objects.remove(obj, do_unlink=True)
+                    bpy.ops.wm.obj_import(filepath=obj_path)
+                    for idx, obj in enumerate(bpy.context.selected_objects):
+                        if idx == 0:
+                            continue
+                        else:
+                            bpy.data.objects.remove(obj, do_unlink=True)
+
             for idx, mesh_match in enumerate(mesh_matchs):
                 # obj_chosen = random.choice(obj_list)
 
                 mesh_shape = re.search(r'shape\s+([^\s>]+)', mesh_match)
                 shape = mesh_shape.group(1)
-                if shape == "Cone_Buoy":
+                if shape == "conbyfr":
                     tar_idx = 1
-                elif shape == "Cone_Buoy_2":
+                elif shape == "conbyfr2":
                     tar_idx = 3
                 else: 
                     tar_idx = 0
@@ -281,6 +294,9 @@ class BlenderRenderer:
                 radius = float(sphere_data_match.group(2))
 
                 obj = bpy.context.selected_objects[idx + 4]
+                if obj.name == "TargetPlane":
+                    obj.location = tuple(pos)
+                    continue
                 obj.location = tuple(pos)
                 obj.rotation_euler = (math.radians(90), 0, math.radians(90))
                 # 如何将物体限制在球体内？
@@ -407,12 +423,18 @@ class BlenderRenderer:
             # 提取相机朝向
             look_at_match = re.search(r'look_at\s*<([^>]*)>', camera_text)
             if look_at_match:
-                x, y, z = map(float, look_at_match.group(1).split(','))
-                x, y, z = self.coord_pov2blend(x, y, z)
+                target_x, target_y, target_z = map(float, look_at_match.group(1).split(','))
+                target_x, target_y, target_z = self.coord_pov2blend(target_x, target_y, target_z)
                 # 创建一个目标空物体
-                bpy.ops.object.empty_add(type='PLAIN_AXES', location=(x, y, z))
+                bpy.ops.object.empty_add(type='PLAIN_AXES', location=(target_x, target_y, target_z))
                 target = bpy.context.object
                 target.name = "CameraTarget"
+
+                # 计算相机和目标物体之间的向量
+                direction = mathutils.Vector((target_x - x, target_y - y, target_z - z))
+                # 将相机向目标物体靠近一定比例的距离，例如靠近 50%
+                move_distance = direction * 0.7
+                cam.location += move_distance
 
                 # 添加 Track To 约束
                 cam = bpy.data.objects['Camera']

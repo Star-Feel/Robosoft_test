@@ -123,7 +123,7 @@ def get_random_mesh(
         elif base_mesh_name == 'cylinder':
             name_list = ['Coffee_cup_withe_', 'Tea_Cup']
         else:
-            name_list = ['Cone_Buoy', 'Cone_Buoy_2']
+            name_list = ['conbyfr', 'conbyfr2']
 
     if name and name in name_list:
         name_list.remove(name)
@@ -165,6 +165,16 @@ def main():
 
         sphere_target_name = None
         blend_mesh_target_name = None
+
+        sphere_target_name, _, _ = get_random_sphere(assets)
+        sphere_target_dict = copy.deepcopy(SPHERE_TEMP)
+        sphere_target_dict["shape"] = "target_surface"
+        sphere_target_dict["density"] = spheres[target_obj_id]['density']
+        sphere_target_dict["center"] = spheres[target_obj_id]['center']
+        sphere_target_dict["radius"] = spheres[target_obj_id]['radius']
+        spheres[target_obj_id] = sphere_target_dict
+
+        del sphere_target_dict
         
 
         # 确定target信息
@@ -201,7 +211,7 @@ def main():
 
         # 确定除target外的物体信息
         for j in range(len(spheres)):
-            if j == target_id:
+            if j == target_id or j == target_obj_id:
                 continue
             sphere = spheres[j]
             if np.random.rand() < 1 / 3:
