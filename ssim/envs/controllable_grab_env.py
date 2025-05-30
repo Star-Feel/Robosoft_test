@@ -24,7 +24,7 @@ from ..components import (
     JoinableRodSphereContact,
     MuscleTorquesWithVaryingBetaSplines,
     RigidBodyAnalyticalLinearDamper,
-    RodMeshSurfaceContactWithGridMethod,
+    JoinableRodMeshSurfaceContactWithGridMethod,
 )
 from ..components.contact import surface_grid_xyz
 from ..components.surface.mesh_surface import MeshSurface
@@ -209,8 +209,8 @@ class ControllableGrabEnvironment(
                     action_flags=self.action_flags,
                     attach_flags=self.attach_flags,
                     flag_id=self.object2id[obj],
-                    collision=False,
-                    eps=1
+                    collision=True,
+                    eps=0.1,
                 )
             elif isinstance(obj, MeshSurface):
                 grid_size = np.min(obj.mesh_scale) / 10
@@ -220,14 +220,20 @@ class ControllableGrabEnvironment(
                 faces_grid["grid_size"] = grid_size
                 faces_grid["surface_reorient"] = obj.mesh_orientation
                 self.simulator.detect_contact_between(
-                    self.shearable_rod, obj).using(
-                        RodMeshSurfaceContactWithGridMethod,
-                        k=1e4,  # 接触刚度系数
-                        nu=30,  # 阻尼系数
-                        faces_grid=faces_grid,
+                    self.shearable_rod, obj
+                ).using(
+                    JoinableRodMeshSurfaceContactWithGridMethod,
+                    k=1e4,  # 接触刚度系数
+                    nu=30,  # 阻尼系数
+                    faces_grid=faces_grid,
                     grid_size=grid_size,
-                        surface_tol=1e-2,
-                    )
+                    surface_tol=1e-2,
+                    action_flags=self.action_flags,
+                    attach_flags=self.attach_flags,
+                    flag_id=self.object2id[obj],
+                    collision=False,
+                    eps=0.001,
+                )
 
         dampen = 10000
         for _, object_ in enumerate(self.objects):

@@ -1,6 +1,7 @@
 __all__ = [
     "JoinableRodSphereContact",
     "RodMeshSurfaceContactWithGridMethod",
+    "JoinableRodMeshSurfaceContactWithGridMethod",
 ]
 from typing import Union
 
@@ -523,7 +524,7 @@ class RodMeshSurfaceContactWithGridMethod(NoContact):
         )
 
 
-class RodMeshSurfaceContactWithGridMethodWithContactFlag(
+class JoinableRodMeshSurfaceContactWithGridMethod(
     RodMeshSurfaceContactWithGridMethod
 ):
 
@@ -534,8 +535,12 @@ class RodMeshSurfaceContactWithGridMethodWithContactFlag(
         faces_grid: dict,
         grid_size: float,
         surface_tol=1e-4,
-        contact_flag: list[bool] = [False],
-        contact_flag_id: int = 0,
+        index: Union[int, np.ndarray] = -1,
+        action_flags: list[bool] = [False],
+        attach_flags: list[bool] = None,
+        flag_id: int = 0,
+        collision: bool = True,
+        eps: float = 1e-3
     ):
         super().__init__(
             k,
@@ -544,13 +549,171 @@ class RodMeshSurfaceContactWithGridMethodWithContactFlag(
             grid_size,
             surface_tol=surface_tol,
         )
-        self.contact_flag = contact_flag
-        self.contact_flag_id = contact_flag_id
+        self.index = index
+        self.action_flags = action_flags
+        self.attach_flags = attach_flags
+        self.flag_id = flag_id
+        self.relative_distance = None
+        self.relative_direction = None
+        self.collision = collision
+        self.eps = eps
+
+    def _attach_check(
+        self,
+        system_one: RodType,
+        system_two: AllowedContactType,
+    ) -> bool:
+        """
+        Check if the rod is attached to the sphere.
+
+        Parameters
+        ----------
+        system_one: object
+            Rod object.
+        system_two: object
+            Sphere object.
+
+        Returns
+        -------
+        bool
+            True if the rod is attached to the sphere, False otherwise.
+        """
+        self.mesh_surface_faces = system_two.faces
+        self.mesh_surface_x_min = np.min(self.mesh_surface_faces[0, :, :])
+        self.mesh_surface_y_min = np.min(self.mesh_surface_faces[1, :, :])
+        self.mesh_surface_z_min = np.min(self.mesh_surface_faces[2, :, :])
+        self.mesh_surface_face_normals = system_two.face_normals
+        self.mesh_surface_face_centers = system_two.face_centers
+        (
+            self.position_idx_array,
+            self.face_idx_array,
+            self.element_position,
+        ) = find_contact_faces_idx_xyz(
+            self.faces_grid,
+            self.mesh_surface_x_min,
+            self.mesh_surface_y_min,
+            self.mesh_surface_z_min,
+            self.grid_size,
+            system_one.position_collection,
+        )
+
+        if len(self.position_idx_array) == 0:
+            self.attach_flags[self.flag_id] = False
+            return
+
+        if len(self.face_idx_array) > 0:
+            element_position_contacts = self.element_position[:, self.
+                                                              position_idx_array
+                                                              ]
+            contact_face_centers = self.mesh_surface_face_centers[:, self.
+                                                                  face_idx_array
+                                                                  ]
+            normals_on_elements = self.mesh_surface_face_normals[:, self.
+                                                                 face_idx_array
+                                                                 ]
+            radius_contacts = system_one.radius[self.position_idx_array]
+
+        else:
+            element_position_contacts = self.element_position
+            contact_face_centers = np.zeros_like(self.element_position)
+            normals_on_elements = np.zeros_like(self.element_position)
+            radius_contacts = system_one.radius
+
+        distance_from_plane = _batch_dot(
+            normals_on_elements,
+            (element_position_contacts - contact_face_centers)
+        )
+        no_contact_point_idx = np.where(
+            (distance_from_plane - radius_contacts) > self.eps
+        )[0]
+        no_contact_point = self.position_idx_array[no_contact_point_idx]
+        point_set = set(self.position_idx_array)
+        no_contact_point_set = set(no_contact_point)
+        contact_point_set = point_set - no_contact_point_set
+        if not contact_point_set:
+            self.attach_flags[self.flag_id] = False
+            return
+        if isinstance(self.index, int):
+            self.index = np.array([self.index])
+        self.index[np.where(self.index < 0)] += self.element_position.shape[-1]
+        check_point_set = set(self.index)
+        if check_point_set & contact_point_set:
+            self.attach_flags[self.flag_id] = True
+        else:
+            self.attach_flags[self.flag_id] = False
 
     def apply_contact(
-        self, system_one: RodType, system_two: AllowedContactType
-    ) -> tuple:
-        pass
+        self,
+        system_one: RodType,
+        system_two: MeshSurface,
+    ) -> None:
+        """
+        Apply contact forces and torques between RodType object and Sphere object.
+
+        Parameters
+        ----------
+        system_one: object
+            Rod object.
+        system_two: object
+            Sphere object.
+
+        """
+        self._attach_check(system_one, system_two)
+        if not self.action_flags[self.flag_id]:
+            self.relative_distance = None
+            self.relative_direction = None
+            if self.collision:
+                super().apply_contact(system_one, system_two)
+        else:
+            mesh_center = np.array(system_two.mesh_center)
+            if not isinstance(self.index, int):
+                index = self.index[-1]
+            else:
+                index = self.index
+            if self.relative_distance is None:
+
+                self.relative_distance = np.linalg.norm(
+                    mesh_center - system_one.position_collection[..., index]
+                )
+
+                system_one_direction = (
+                    system_one.position_collection[..., index]
+                    - system_one.position_collection[..., index - 1]
+                )
+                system_one_direction = system_one_direction / np.linalg.norm(
+                    system_one_direction
+                )
+                system_two_direction = (
+                    mesh_center - system_one.position_collection[..., index]
+                )
+                system_two_direction = system_two_direction / np.linalg.norm(
+                    system_two_direction
+                )
+
+                self.relative_direction = (
+                    system_two_direction - system_one_direction
+                )
+
+            else:
+                system_one_direction = (
+                    system_one.position_collection[..., index]
+                    - system_one.position_collection[..., index - 1]
+                )
+                system_one_direction = system_one_direction / np.linalg.norm(
+                    system_one_direction
+                )
+                system_two_direction = (
+                    system_one_direction + self.relative_direction
+                )
+                system_two_direction = system_two_direction / np.linalg.norm(
+                    system_two_direction
+                )
+                relative_position = (
+                    system_two_direction * self.relative_distance
+                )
+                dx = system_one.position_collection[
+                    ..., index] + relative_position - mesh_center
+                system_two.translate(dx)
 
 
 class JoinableRodSphereContact(RodSphereContact):
