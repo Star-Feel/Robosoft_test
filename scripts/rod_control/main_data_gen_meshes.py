@@ -5,7 +5,7 @@ from typing import TypedDict
 
 import numpy as np
 import trimesh
-import tqdm
+from tqdm import tqdm
 import sys
 
 # sys.path.append("/data/wjs/wrp/SoftRoboticaSimulator")
@@ -18,11 +18,6 @@ FULL_DIR = "./work_dirs/rod_control_data/full"
 TARGET_DIR = "./work_dirs/rod_control_data/full"
 BASE_ASSETS_DIR = "./assets"
 ASSETS_DIR = "./scene_assets/living_room"
-
-# FULL_DIR = "/data/wjs/SoftRoboticaSimulator/work_dirs/rod_control_data/full"
-# TARGET_DIR = "/data/wjs/SoftRoboticaSimulator/work_dirs/rod_control_data/full"
-# BASE_ASSETS_DIR = "/data/wjs/SoftRoboticaSimulator/assets"
-# ASSETS_DIR = "/data/wjs/SoftRoboticaSimulator/scene_assets/living_room"
 
 
 class ASSET(TypedDict):
@@ -121,7 +116,7 @@ def get_random_sphere(assets: dict[ASSET],
 
 
 def main():
-    for i in tqdm.tqdm(range(N)):
+    for i in tqdm(range(N)):
         local_full_dir = osp.join(FULL_DIR, f"{i}")
         local_target_dir = osp.join(TARGET_DIR, f"{i}")
 
@@ -139,6 +134,16 @@ def main():
 
         sphere_target_name = None
         blend_mesh_target_name = None
+
+        sphere_target_name, _, _ = get_random_sphere(assets)
+        sphere_target_dict = copy.deepcopy(SPHERE_TEMP)
+        sphere_target_dict["shape"] = "target_surface"
+        sphere_target_dict["density"] = spheres[target_obj_id]['density']
+        sphere_target_dict["center"] = spheres[target_obj_id]['center']
+        sphere_target_dict["radius"] = spheres[target_obj_id]['radius']
+        spheres[target_obj_id] = sphere_target_dict
+
+        del sphere_target_dict
 
         # 确定target信息
         if np.random.rand() < 1 / 2:
@@ -164,8 +169,7 @@ def main():
             mesh_target_dict["mesh_path"] = mesh_target_path
             mesh_target_dict["shape"] = blend_mesh_target_name
 
-            # max_mesh_span = float(np.linalg.norm(mesh_target_span))
-            max_mesh_span = float(np.max(mesh_target_span))
+            max_mesh_span = float(np.linalg.norm(mesh_target_span))
             scale = round(2 * radius / max_mesh_span, 3)
             mesh_target_dict["center"] = center
             mesh_target_dict["scale"] = [scale] * 3
