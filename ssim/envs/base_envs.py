@@ -504,14 +504,16 @@ class FetchableRodObjectsEnvironment(
         # x_min = min(list(point.center[0] for point in self.object_configs))
         # y_min = min(list(point.center[1] for point in self.object_configs))
         # z_min = min(list(point.center[2] for point in self.object_configs))
-        
+
         # x_avg = (x_max + x_min) / 2
         # y_avg = (y_max + y_min) / 2
         # z_avg = (z_max + z_min) / 2
-        
+
         frames = len(self.rod_callback['time'])
         for i in tqdm(range(frames), disable=False, desc="Rendering .povray"):
-            renderer.reset_stage(top_camera_position=[2, 7, 1], top_camera_look_at=[0, 0, 1])
+            renderer.reset_stage(
+                top_camera_position=[2, 7, 1], top_camera_look_at=[0, 0, 1]
+            )
             for object_ in self.objects:
                 id_ = self.object2id[object_]
                 object_callback = self.object_callbacks[id_]
@@ -539,6 +541,7 @@ class FetchableRodObjectsEnvironment(
                     "rod_position": self.rod_callback["position"][i],
                     "rod_radius": self.rod_callback["radius"][i],
                 },
+                save_script_file=True,
                 save_img=False,
             )
 
@@ -566,7 +569,9 @@ class FetchableRodObjectsEnvironment(
                 height=height,
             )
 
-            renderer.reset_stage(top_camera_position=[2, 7, 1], top_camera_look_at=[0, 0, 1])
+            renderer.reset_stage(
+                top_camera_position=[2, 7, 1], top_camera_look_at=[0, 0, 1]
+            )
             for object_ in self.objects:
                 id_ = self.object2id[object_]
                 object_callback = self.object_callbacks[id_]
@@ -598,11 +603,14 @@ class FetchableRodObjectsEnvironment(
                     "rod_position": self.shearable_rod.position_collection,
                     "rod_radius": self.shearable_rod.radius,
                 },
-                save_script_file = True,
+                save_script_file=True,
                 save_img=False,
             )
 
-            blender_renderer.Single_step_rendering(current_step, self.action_flags, target_id, top_view_dir, top_view_dir)
+            blender_renderer.Single_step_rendering(
+                current_step, self.action_flags, target_id, top_view_dir,
+                top_view_dir
+            )
 
 
 class RodSphereEnvironment(RodMixin, RigidMixin, SimulatedEnvironment):
