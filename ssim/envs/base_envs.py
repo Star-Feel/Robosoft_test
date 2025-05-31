@@ -496,19 +496,6 @@ class FetchableRodObjectsEnvironment(
             height=height,
         )
 
-        # refine camera setting
-        # x_max = max(list(point.center[0] for point in self.object_configs))
-        # y_max = max(list(point.center[1] for point in self.object_configs))
-        # z_max = max(list(point.center[2] for point in self.object_configs))
-
-        # x_min = min(list(point.center[0] for point in self.object_configs))
-        # y_min = min(list(point.center[1] for point in self.object_configs))
-        # z_min = min(list(point.center[2] for point in self.object_configs))
-
-        # x_avg = (x_max + x_min) / 2
-        # y_avg = (y_max + y_min) / 2
-        # z_avg = (z_max + z_min) / 2
-
         frames = len(self.rod_callback['time'])
         for i in tqdm(range(frames), disable=False, desc="Rendering .povray"):
             renderer.reset_stage(
@@ -538,6 +525,15 @@ class FetchableRodObjectsEnvironment(
                         scale=scale,
                         matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
                     )
+            renderer.add_stage_object(
+                object_type='mesh',
+                name=f'mesh{len(self.objects)}',
+                shape="truncated_cone_base",
+                object_name="rod_component",
+                position=np.squeeze(self.rod_callback['position'][i][:, 0]),
+                scale=0.3,
+                matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
+            )
             renderer.render_single_step(
                 data={
                     "rod_position": self.rod_callback["position"][i],

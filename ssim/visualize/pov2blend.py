@@ -18,6 +18,7 @@ ASSET_PATHS = {
     "Book_by_Peter_Iliev_obj": "./scene_assets/living_room/Book_by_Peter_Iliev_obj/Book_by_Peter_Iliev_obj.obj",
     "conbyfr": "./scene_assets/living_room/Cone_Buoy/conbyfr.obj",
     "conbyfr2": "./scene_assets/living_room/Cone_Buoy_2/conbyfr2.obj",
+    "truncated_cone_base": "scene_assets/robot/truncated_cone_base.obj",
 }
 
 
@@ -380,6 +381,8 @@ class BlenderRenderer:
                 elif 'big_pillow' in obj.name:
                     obj.rotation_euler = (math.radians(90), 0, 0)
                 elif 'Cylinder' in obj.name:
+                    obj.rotation_euler = (0, 0, math.radians(-90))
+                elif "truncated_cone_base" in obj.name:
                     obj.rotation_euler = (0, 0, math.radians(-90))
                 else:
                     obj.rotation_euler = (
