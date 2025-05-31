@@ -432,7 +432,7 @@ class BlenderRenderer:
             location_match = re.search(r'location\s*<([^>]*)>', camera_text)
             if location_match:
                 x, y, z = map(float, location_match.group(1).split(','))
-                x, y, z = self.coord_pov2blend(x, y, z)
+                # x, y, z = self.coord_pov2blend(x, y, z)
                 bpy.ops.object.camera_add(location=(x, y, z))
                 # 获取刚创建的相机对象并设置为活动相机
                 cam = bpy.context.object
@@ -445,7 +445,7 @@ class BlenderRenderer:
                 angle = float(60)
                 # 转换 POV-Ray 角度为 Blender 焦距
                 cam = bpy.data.objects['Camera']
-                cam.data.lens = 60
+                cam.data.lens = 40
                 # / math.tan(
                 #     math.radians(angle / 2)
                 # )
@@ -457,9 +457,9 @@ class BlenderRenderer:
                     float,
                     look_at_match.group(1).split(',')
                 )
-                target_x, target_y, target_z = self.coord_pov2blend(
-                    target_x, target_y, target_z
-                )
+                # target_x, target_y, target_z = self.coord_pov2blend(
+                #     target_x, target_y, target_z
+                # )
 
                 # 创建一个目标空物体
                 bpy.ops.object.empty_add(

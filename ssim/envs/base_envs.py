@@ -499,7 +499,7 @@ class FetchableRodObjectsEnvironment(
         frames = len(self.rod_callback['time'])
         for i in tqdm(range(frames), disable=False, desc="Rendering .povray"):
             renderer.reset_stage(
-                top_camera_position=[2, 7, 1], top_camera_look_at=[0, 0, 1]
+                top_camera_position=[1, 4, -4], top_camera_look_at=[1, 0, 0]
             )
             for object_ in self.objects:
                 id_ = self.object2id[object_]
