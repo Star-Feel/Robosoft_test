@@ -139,7 +139,7 @@ if __name__ == "__main__":
     generate_truncated_cone_with_material_y_up(
         "/data/zyw/workshop/attempt/scene_assets/robot/truncated_cone_base.obj",
         bottom_radius=0.5,  # 底面半径
-        top_radius=0.05,  # 顶面半径
+        top_radius=0.3,  # 顶面半径
         height=0.5,  # 高度
         segments=256,  # 分段数，越高越平滑
         color=(0., 0., 0.)  # 灰色 (RGB值范围0-1)
