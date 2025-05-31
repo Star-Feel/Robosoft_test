@@ -59,7 +59,7 @@ def main():
         place_direction = positions[place, -1, :] - positions[place, -2, :]
         place_direction = place_direction / np.linalg.norm(place_direction)
         object_radius, object_center = get_object(
-            pick_position, pick_direction, (0.01, 0.1)
+            pick_position, pick_direction, (0.05, 0.05)
         )
         target_radius, target_center = get_target(
             place_position, place_direction, object_radius * 0.5

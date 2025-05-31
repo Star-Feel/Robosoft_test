@@ -18,7 +18,7 @@ def get_random_sphere(
     minx: float, maxx: float, miny: float, maxy: float, minz: float,
     maxz: float
 ) -> tuple:
-    radius = np.random.uniform(0, 0.1)
+    radius = np.random.uniform(0.07, 0.1)
     x = np.random.uniform(minx + radius, maxx - radius)
     y = np.random.uniform(miny + radius, maxy - radius)
     z = np.random.uniform(minz + radius, maxz - radius)
@@ -59,7 +59,7 @@ def gen_obstacles(
     # minz, maxz = positions[:, 2].min() - margin, positions[:, 2].max() + margin
     min_x, max_x = -0.6, 0.6
     min_y, max_y = -0.6, 0.6
-    min_z, max_z = 0.0, 0.3
+    min_z, max_z = 0.0, 0.5
     obstacles = []
     for _ in range(num_obstacles):
         while True:
