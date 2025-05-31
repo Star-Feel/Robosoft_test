@@ -344,7 +344,7 @@ class BlenderRenderer:
 
                 # 应用缩放（略微减小以确保不会超出）
                 # 0.95是安全系数，可以根据需要调整
-                safe_scale = scale_factor
+                safe_scale = scale_factor * 2  # 需要乘2才是实际的大小，不知道为什么
                 obj.scale = (safe_scale, safe_scale, safe_scale)
 
                 # 将物体位置设回球体中心
@@ -659,7 +659,6 @@ class BlenderRenderer:
                     links.new(
                         color_ramp.inputs[0], gradient_tex.outputs['Object']
                     )
-
 
     def update_target_object(self):
         sphere_matchs = re.findall(
