@@ -568,10 +568,16 @@ class BlenderRenderer:
 
                 # 设置点位置
                 for idx, (pos, radius) in enumerate(points):
-                    polyline.bezier_points[idx].co = pos
-                    polyline.bezier_points[idx].radius = 2.0
-                    polyline.bezier_points[idx].handle_left_type = 'AUTO'
-                    polyline.bezier_points[idx].handle_right_type = 'AUTO'
+                    if idx == 19:
+                        polyline.bezier_points[idx].co = pos
+                        polyline.bezier_points[idx].radius = 0.1
+                        polyline.bezier_points[idx].handle_left_type = 'AUTO'
+                        polyline.bezier_points[idx].handle_right_type = 'AUTO'
+                    else:
+                        polyline.bezier_points[idx].co = pos
+                        polyline.bezier_points[idx].radius = 2.0
+                        polyline.bezier_points[idx].handle_left_type = 'AUTO'
+                        polyline.bezier_points[idx].handle_right_type = 'AUTO'
 
                 # 创建曲线对象
                 curve_obj = bpy.data.objects.new(
