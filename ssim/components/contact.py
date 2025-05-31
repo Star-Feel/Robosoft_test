@@ -818,6 +818,8 @@ class JoinableRodSphereContact(RodSphereContact):
                 super().apply_contact(system_one, system_two)
         else:
             if self.relative_distance is None:
+                # self.relative_distance = system_two.position_collection[
+                #     ..., 0] - system_one.position_collection[..., self.index]
 
                 self.relative_distance = np.linalg.norm(
                     system_two.position_collection[..., 0]
@@ -844,6 +846,10 @@ class JoinableRodSphereContact(RodSphereContact):
                 )
 
             else:
+                # system_two.position_collection[..., 0] = (
+                #     system_one.position_collection[..., self.index]
+                #     + self.relative_distance
+                # )
                 system_one_direction = (
                     system_one.position_collection[..., self.index]
                     - system_one.position_collection[..., self.index - 1]
