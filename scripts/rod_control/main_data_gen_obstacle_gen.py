@@ -34,7 +34,8 @@ def check_intersection_by_xz(sphere1: tuple, sphere2: tuple) -> bool:
 
 def check_collision_with_positions(sphere: tuple, positions: np.array) -> bool:
     x, y, z, radius = sphere
-    distances = np.sqrt((positions[:, 0] - x)**2 + (positions[:, 2] - z)**2)
+    distances = np.sqrt((positions[:, 0] - x)**2 + (positions[:, 1] - y)**2
+                        + (positions[:, 2] - z)**2)
     return np.any(distances <= radius)
 
 
