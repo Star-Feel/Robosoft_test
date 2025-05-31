@@ -7,6 +7,7 @@ import bpy
 import mathutils
 import tqdm
 import numpy as np
+import random
 
 ASSET_PATHS = {
     "Obj": "./scene_assets/living_room/soccer/Obj.obj",
@@ -52,13 +53,13 @@ class BlenderRenderer:
             )  # RGBA
 
         # 创建顶部环境灯光
-        bpy.ops.object.light_add(type='SUN', location=(0, 0, 10))
+        bpy.ops.object.light_add(type='SUN', location=(1, 0, 10))
         top_light = bpy.context.object
         top_light.name = "SunLight"
-        top_light.data.energy = 5
+        top_light.data.energy = 10
         top_light.data.color = (1.0, 1.0, 1.0)
-        top_light.data.shadow_soft_size = 0.5  # 软阴影大小
-        top_light.rotation_euler = (0.5, 0.0, 0.0)
+        top_light.data.shadow_soft_size = 1  # 软阴影大小
+        top_light.rotation_euler = (math.radians(60), 0.0, math.radians(60))
 
         # bpy.ops.object.light_add(type='AREA', location=(0, 0, 10))
         # top_light = bpy.context.object
@@ -82,7 +83,7 @@ class BlenderRenderer:
         plane = bpy.context.object
         plane.name = "GroundPlane"
         material = bpy.data.materials.new(name="GroundMaterial")
-        material.diffuse_color = (0.5, 0.5, 0, 1.0)  # 设置为白色
+        material.diffuse_color = (0.5, 0.539, 0.53, 1.0)  # 设置为白色
         plane.data.materials.append(material)
         plane.rotation_euler[1] = math.radians(89)  # 将角度转换为弧度
 
@@ -639,11 +640,6 @@ class BlenderRenderer:
                         color_ramp.inputs[0], gradient_tex.outputs['Object']
                     )
 
-                    # bsdf = material.node_tree.nodes["Principled BSDF"]
-                    # bsdf.inputs["Base Color"].default_value = (r, g, b, 1)
-
-                    # 指定材质
-                    # curve_obj.data.materials.append(material)
 
     def update_target_object(self):
         sphere_matchs = re.findall(
