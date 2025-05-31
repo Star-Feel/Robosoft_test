@@ -209,8 +209,8 @@ class ControllableGrabEnvironment(
                     action_flags=self.action_flags,
                     attach_flags=self.attach_flags,
                     flag_id=self.object2id[obj],
-                    collision=True,
-                    eps=0.1,
+                    collision=False,
+                    eps=0.01,
                 )
             elif isinstance(obj, MeshSurface):
                 grid_size = np.min(obj.mesh_scale) / 10
