@@ -57,9 +57,9 @@ class BlenderRenderer:
         bpy.ops.object.light_add(type='SUN', location=(1, 0, 10))
         top_light = bpy.context.object
         top_light.name = "SunLight"
-        top_light.data.energy = 10
+        top_light.data.energy = 0
         top_light.data.color = (1.0, 1.0, 1.0)
-        top_light.data.shadow_soft_size = 1  # 软阴影大小
+        top_light.data.shadow_soft_size = 0  # 软阴影大小
         top_light.rotation_euler = (math.radians(60), 0.0, math.radians(60))
 
         # bpy.ops.object.light_add(type='AREA', location=(0, 0, 10))
@@ -408,7 +408,11 @@ class BlenderRenderer:
 
                 # 应用缩放（略微减小以确保不会超出）
                 # 0.95是安全系数，可以根据需要调整
-                safe_scale = scale_factor * 1
+                if "truncated_cone_base" not in obj.name:
+                    # 底座不需要缩放
+                    safe_scale = scale_factor * 2  # 不知道为什么
+                else:
+                    safe_scale = scale_factor
                 obj.scale = (safe_scale, safe_scale, safe_scale)
 
                 # 将物体位置设回球体中心
@@ -585,16 +589,16 @@ class BlenderRenderer:
 
                 # 设置点位置
                 for idx, (pos, radius) in enumerate(points):
-                    if idx == 19:
-                        polyline.bezier_points[idx].co = pos
-                        polyline.bezier_points[idx].radius = 0.1
-                        polyline.bezier_points[idx].handle_left_type = 'AUTO'
-                        polyline.bezier_points[idx].handle_right_type = 'AUTO'
-                    else:
-                        polyline.bezier_points[idx].co = pos
-                        polyline.bezier_points[idx].radius = 2.0
-                        polyline.bezier_points[idx].handle_left_type = 'AUTO'
-                        polyline.bezier_points[idx].handle_right_type = 'AUTO'
+                    # if idx == 19:
+                    #     polyline.bezier_points[idx].co = pos
+                    #     polyline.bezier_points[idx].radius = 0.1
+                    #     polyline.bezier_points[idx].handle_left_type = 'AUTO'
+                    #     polyline.bezier_points[idx].handle_right_type = 'AUTO'
+                    # else:
+                    polyline.bezier_points[idx].co = pos
+                    polyline.bezier_points[idx].radius = 2.0
+                    polyline.bezier_points[idx].handle_left_type = 'AUTO'
+                    polyline.bezier_points[idx].handle_right_type = 'AUTO'
 
                 # 创建曲线对象
                 curve_obj = bpy.data.objects.new(
