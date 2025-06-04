@@ -40,7 +40,7 @@ from ..utils import compute_rotation_matrix
 from ..arguments import MeshSurfaceArguments, SphereArguments
 from ..components import MeshSurface, RigidBodyCallBack, RodCallBack
 from ..components.callback import MeshSurfaceCallBack
-from ..visualize.pov2blend import BlenderRenderer
+from ..visualize.pov2blend import VLNBlenderRenderer
 from ..visualize.renderer import POVRayRenderer
 from ..visualize.visualizer import rod_objects_3d_visualize
 
@@ -315,139 +315,6 @@ class VLMBlenderMixin:
     pass
 
 
-class BlenderMixin:
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.blender_objects = []
-        self.blender_object2id = {}
-        self.blender_object_callbacks = []
-
-    def _get_top_camera_position(self):
-        x_max = max(list(point.center[0] for point in self.object_configs))
-        y_max = max(list(point.center[2] for point in self.object_configs))
-
-        x_min = min(list(point.center[0] for point in self.object_configs))
-        y_min = min(list(point.center[2] for point in self.object_configs))
-
-        x_avg = (x_max + x_min) / 2
-        y_avg = (y_max + y_min) / 2
-
-        return x_avg, y_avg
-
-    def setup_top_camera(
-        self,
-        renderer: POVRayRenderer,
-    ):
-        """
-        Set up the top camera position and look at point.
-        """
-        x_avg, y_avg = self._get_top_camera_position()
-        renderer.reset_stage(
-            top_camera_position=[x_avg, 6, y_avg],
-            top_camera_look_at=[x_avg, 0, y_avg]
-        )
-
-    def setup_blender_objects(self, renderer: POVRayRenderer, step: int):
-
-        for object_ in self.objects:
-            id_ = self.object2id[object_]
-            object_callback = self.object_callbacks[id_]
-            if isinstance(object_, ea.Sphere):
-                renderer.add_stage_object(
-                    object_type='sphere',
-                    name=f'sphere{id_}',
-                    shape=str(self.object_configs[id_].shape),
-                    position=np.squeeze(object_callback['position'][step]),
-                    radius=np.squeeze(object_callback['radius'][step]),
-                )
-            elif isinstance(object_, MeshSurface):
-                scale = np.linalg.norm(object_.mesh_scale)
-                renderer.add_stage_object(
-                    object_type='mesh',
-                    name=f'mesh{id_}',
-                    mesh_name='cube_mesh',
-                    shape=str(self.object_configs[id_].shape),
-                    position=np.squeeze(object_callback['position'][step]),
-                    scale=scale,
-                    matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
-                )
-
-    def visualize_3d_blender(
-        self,
-        video_name,
-        output_images_dir,
-        fps,
-        width=960,
-        height=540,
-    ):
-        top_view_dir = os.path.join(output_images_dir, "top")
-        blender_renderer = BlenderRenderer(top_view_dir)
-
-        renderer = POVRayRenderer(
-            output_filename=video_name,
-            output_images_dir=output_images_dir,
-            fps=fps,
-            width=width,
-            height=height,
-        )
-
-        frames = len(self.rod_callback['time'])
-        for i in tqdm(range(frames), disable=False, desc="Rendering .povray"):
-
-            self.setup_top_camera(renderer)
-            self.setup_blender_objects(renderer, i)
-            renderer.render_single_step(
-                data={
-                    "rod_position": self.rod_callback["position"][i],
-                    "rod_radius": self.rod_callback["radius"][i],
-                },
-                save_script_file=True,
-                save_img=False,
-            )
-
-        blender_renderer.batch_rendering(top_view_dir, top_view_dir)
-        renderer.create_video(only_top=True)
-
-    def single_step_3d_blend(
-        self,
-        width: int = 960,
-        height: int = 540,
-        current_step: int = 0,
-        interval: int = 1,
-        save_img: bool = False,
-        output_images_dir: str = ""
-    ) -> np.ndarray:
-        if current_step % interval == 0:
-            top_view_dir = os.path.join(output_images_dir, "top")
-            blender_renderer = BlenderRenderer(top_view_dir)
-
-            renderer = POVRayRenderer(
-                output_images_dir=output_images_dir,
-                width=width,
-                height=height,
-            )
-            self.setup_top_camera(renderer)
-
-            self.setup_blender_objects(renderer, 0)
-
-            pov_scripts = renderer.render_single_step(
-                data={
-                    "rod_position": self.shearable_rod.position_collection,
-                    "rod_radius": self.shearable_rod.radius,
-                },
-                save_img=False,
-            )
-
-            rendered_image = blender_renderer.single_step_rendering(
-                current_step,
-                pov_scripts["top"],
-                top_view_dir,
-                save_img,
-            )
-            # return rendered_image
-
-
 class VLMBlender:
 
     def visualize_3d_blender(
@@ -460,7 +327,7 @@ class VLMBlender:
         target_id=0,
     ):
         top_view_dir = os.path.join(output_images_dir, "top")
-        blender_renderer = BlenderRenderer(top_view_dir)
+        blender_renderer = VLNBlenderRenderer(top_view_dir)
 
         renderer = POVRayRenderer(
             output_filename=video_name,
@@ -533,7 +400,7 @@ class VLMBlender:
     ):
         if current_step % interval == 0:
             top_view_dir = os.path.join(output_images_dir, "top")
-            blender_renderer = BlenderRenderer(top_view_dir)
+            blender_renderer = VLNBlenderRenderer(top_view_dir)
 
             renderer = POVRayRenderer(
                 output_images_dir=output_images_dir,
@@ -623,7 +490,6 @@ class RodSphereEnvironment(RodMixin, RigidMixin, SimulatedEnvironment):
 class FetchableRodObjectsEnvironment(
     RodMixin,
     ObjectsMixin,
-    BlenderMixin,
     SimulatedEnvironment,
 ):
 

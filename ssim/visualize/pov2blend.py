@@ -28,7 +28,10 @@ ASSET_PATHS = {
 }
 
 
-class BlenderRenderer:
+class VLNBlenderRenderer:
+
+    sphere_parttern = r'sphere\s*{([^}]*)}'
+    mesh_pattern = r'object\s*\{[^}]*\}'
 
     def __init__(self, output_dir="renders"):
         self.set_environment()
@@ -246,10 +249,10 @@ class BlenderRenderer:
     def load_obj(self, obj_path=None):
         # obj_path == None, then load obj randomly
         sphere_matchs = re.findall(
-            r'sphere\s*{([^}]*)}', self.pov_content, re.DOTALL
+            self.sphere_parttern, self.pov_content, re.DOTALL
         )
         mesh_matchs = re.findall(
-            r'object\s*\{\s*cube_mesh[^}]*\}', self.pov_content, re.DOTALL
+            self.mesh_pattern, self.pov_content, re.DOTALL
         )
 
         if obj_path is None:
@@ -338,7 +341,7 @@ class BlenderRenderer:
                     material.diffuse_color = (1.0, 0.0, 0.0, 1.0)
                     obj.data.materials.append(material)
 
-        # mesh_matchs = re.findall(r'object\s*\{\s*cube_mesh[^}]*\}', self.pov_content, re.DOTALL)
+        # mesh_matchs = re.findall(self.mesh_pattern, self.pov_content, re.DOTALL)
         for idx, mesh_match in enumerate(mesh_matchs):
             mesh_data_match = re.search(r'translate\s*<([^>]*)>', mesh_match)
             mesh_scale = re.search(r'scale\s*([0-9.]+)', mesh_match)
@@ -475,7 +478,7 @@ class BlenderRenderer:
     def set_sphere(self):
         # 处理球体
         sphere_matches = re.findall(
-            r'sphere\s*{([^}]*)}', self.pov_content, re.DOTALL
+            self.sphere_parttern, self.pov_content, re.DOTALL
         )
         for i, sphere_text in enumerate(sphere_matches):
             # 提取球体位置和半径
@@ -638,6 +641,8 @@ class BlenderRenderer:
         bpy.data.images["Render Result"].save_render(
             f"renders/frame_000000.png"
         )
+
+
 class VLMBlenderRenderer:
     sphere_parttern = r'sphere\s*{([^}]*)}'
     mesh_pattern = r'object\s*\{[^}]*\}'
@@ -973,7 +978,7 @@ class VLMBlenderRenderer:
                     material.diffuse_color = (1.0, 0.0, 0.0, 1.0)
                     obj.data.materials.append(material)
 
-        # mesh_matchs = re.findall(r'object\s*\{\s*cube_mesh[^}]*\}', self.pov_content, re.DOTALL)
+        # mesh_matchs = re.findall(self.mesh_pattern, self.pov_content, re.DOTALL)
         for idx, mesh_match in enumerate(mesh_matchs):
             mesh_data_match = re.search(r'translate\s*<([^>]*)>', mesh_match)
             mesh_scale = re.search(r'scale\s*([0-9.]+)', mesh_match)
@@ -1130,7 +1135,7 @@ class VLMBlenderRenderer:
     def set_sphere(self):
         # 处理球体
         sphere_matches = re.findall(
-            r'sphere\s*{([^}]*)}', self.pov_content, re.DOTALL
+            self.sphere_parttern, self.pov_content, re.DOTALL
         )
         for i, sphere_text in enumerate(sphere_matches):
             # 提取球体位置和半径
@@ -1334,7 +1339,7 @@ if __name__ == "__main__":
     # obj_path = "/data/wjs/wrp/SoftRoboticaSimulator/assets/basketball/BasketBall.obj"
     out_dir = "/data/wjs/wrp/SoftRoboticaSimulator/renders"
 
-    pov_settings = BlenderRenderer()
+    pov_settings = VLNBlenderRenderer()
     start_time = time.time()
     # pov_settings.load_pov_settings(pov_file, obj_path)\
     pov_settings.batch_rendering(pov_dir, out_dir)
