@@ -9,7 +9,7 @@ import trimesh
 from tqdm import tqdm
 
 from configs import FULL_DIR, NUM_DATA, meshes_config
-from ssim.utils import load_json, load_yaml, save_yaml
+from ssim.utils import load_json, load_yaml, save_json, save_yaml
 
 
 class ASSET(TypedDict):
@@ -39,31 +39,12 @@ class MeshesConfig:
     blend_assets_dir: str
 
 
-def get_base_assets_with_bounding_boxes(assets_dir: str):
+def get_assets_with_bounding_boxes(assets_dir: str, asserts_type: str = "stl"):
+    file_appendix = ".stl" if asserts_type == "stl" else ".obj"
     assets = {}
     for root, _, files in os.walk(assets_dir):
         for file in files:
-            if file.endswith(".stl"):
-                asset_path = os.path.join(root, file)
-                asset_name = osp.splitext(file)[0]
-
-                # Load the mesh and compute the bounding box
-                mesh = trimesh.load(asset_path)
-                bounding_box = mesh.bounds.tolist(
-                )  # Store as a list for JSON compatibility
-
-                # Map asset name to its path and bounding box
-                assets[asset_name] = ASSET(path=asset_path, bbox=bounding_box)
-
-    return assets
-
-
-def get_assets_with_bounding_boxes(assets_dir: str):
-    assets = {}
-    for root, _, files in os.walk(assets_dir):
-        for file in files:
-
-            if file.endswith(".obj"):
+            if file.endswith(file_appendix):
                 asset_path = os.path.join(root, file)
                 asset_name = osp.splitext(file)[0]
 
@@ -121,10 +102,12 @@ def main():
 
         os.makedirs(local_target_dir, exist_ok=True)
 
-        base_assets = get_base_assets_with_bounding_boxes(
-            script_config.base_assets_dir
+        base_assets = get_assets_with_bounding_boxes(
+            script_config.base_assets_dir, "stl"
         )
-        assets = get_assets_with_bounding_boxes(script_config.blend_assets_dir)
+        assets = get_assets_with_bounding_boxes(
+            script_config.blend_assets_dir, "obj"
+        )
 
         config = load_yaml(osp.join(local_full_dir, "config.yaml"))
         spheres = config["objects"]
@@ -149,9 +132,11 @@ def main():
             center = spheres[target_id]["center"]
             radius = spheres[target_id]["radius"]
 
-            mesh_target_name, mesh_target_path, mesh_target_span = get_random_mesh(
-                base_assets
-            )
+            (
+                mesh_target_name,
+                mesh_target_path,
+                mesh_target_span,
+            ) = get_random_mesh(base_assets)
             blend_mesh_target_name, _, _ = get_random_mesh(
                 assets, base_mesh_name=mesh_target_name
             )
@@ -217,6 +202,32 @@ def main():
 
                 del mesh_dict
 
+        # 处理文本
+        target_mesh = mesh_target_dict["shape"]
+        target_name = ""
+        match target_mesh:
+            case "Obj":
+                target_name = "football"
+            case "BasketBall":
+                target_name = "basketball"
+            case "pillows_obj":
+                target_name = "gray pillow"
+            case "Book_by_Peter_Iliev_obj":
+                target_name = "red book"
+            case "Coffee_cup_withe_":
+                target_name = "white coffee cup"
+            case "Tea_Cup":
+                target_name = "tea cup"
+            case "conbyfr":
+                target_name = "conbyfr"
+            case "conbyfr2":
+                target_name = "conbyfr2"
+
+        info = load_json(osp.join(local_full_dir, "info.json"))
+        info["description"] = info["description"].replace(
+            "<object>", target_name
+        )
+        save_json(info, osp.join(local_target_dir, "info.json"))
         save_yaml(config, osp.join(local_target_dir, "config.yaml"))
 
 
