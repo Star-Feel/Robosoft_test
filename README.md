@@ -60,12 +60,11 @@ make;make install
 Run the following scripts steply
 
 ```bash
-python scripts/navigation/main_data_gen_random_go.py
-python scripts/navigation/main_data_gen_prune.py # choiceable, if you want to make the road be short
-python scripts/navigation/main_data_gen_obstacle_gen.py
-python scripts/navigation/main_data_gen_target_gen.py
-python scripts/navigation/main_data_gen_full.py
-python scripts/navigation/main_data_gen_meshes.py
-python scripts/navigation/main_data_gen_visual_gen.py
-python scripts/navigation/main_data_gen_release.py
+bash scirpts/navigation/date_gen.sh
+```
+
+## VLM Data Generate
+To run RL model, we need to
+```bash
+pip install tensorflow==2.16.1
 ```
