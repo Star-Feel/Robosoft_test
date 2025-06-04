@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 from matplotlib import animation
 from tqdm import tqdm
 import elastica as ea
-from ..components.surface.mesh_surface import MeshSurface
 
 
 def plot_video(
@@ -376,19 +375,6 @@ def rod_objects_3d_visualize(
             z = obj.radius * np.outer(np.ones(np.size(u)), np.cos(v))
             sphere_surface = ax.plot_surface(x, y, z, color='b', alpha=0.6)
             objects_plot.append(sphere_surface)
-        # elif isinstance(obj, MeshSurface):
-        #     # 将网格表面绘制为三角形面片
-        #     vertices = obj.face_centers
-        #     faces = obj.faces
-        #     for face in faces:
-        #         # 获取面片的顶点坐标
-        #         face_vertices = vertices[face]
-        #         # 创建三角形面片
-        #         triangle = ax.plot_trisurf(
-        #             face_vertices[:, 0], face_vertices[:, 1], face_vertices[:, 2],
-        #             color='g', alpha=0.6
-        #         )
-        #         objects_plot.append(triangle)
 
     # 时间显示
     time_template = 'Time: %.3fs'

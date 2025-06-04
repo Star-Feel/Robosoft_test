@@ -11,11 +11,13 @@ __all__ = [
 
 import os
 import pickle
+import shutil
 from abc import ABC, abstractmethod
 from typing import Optional
-
-import elastica as ea
 import gym
+
+import bpy
+import elastica as ea
 import matplotlib.pyplot as plt
 import numpy as np
 from elastica import (
@@ -31,11 +33,13 @@ from elastica import (
 from elastica.timestepper import extend_stepper_interface
 from gym import spaces
 from matplotlib import animation
+from gym import spaces
 from tqdm import tqdm
 
+from ..utils import compute_rotation_matrix
+from ..arguments import MeshSurfaceArguments, SphereArguments
 from ..components import MeshSurface, RigidBodyCallBack, RodCallBack
 from ..components.callback import MeshSurfaceCallBack
-from ..utils import compute_rotation_matrix
 from ..visualize.pov2blend import BlenderRenderer
 from ..visualize.renderer import POVRayRenderer
 from ..visualize.visualizer import rod_objects_3d_visualize
@@ -269,6 +273,26 @@ class ObjectsMixin(RigidMixin):
     def add_cylinder(self):
         pass
 
+    def add_objects(self, object_configs: list):
+        for object_config in object_configs:
+            if isinstance(object_config, SphereArguments):
+                self.add_sphere(
+                    center=object_config.center,
+                    radius=object_config.radius,
+                    density=object_config.density,
+                )
+            elif isinstance(object_config, MeshSurfaceArguments):
+                self.add_mesh_surface(
+                    mesh_path=object_config.mesh_path,
+                    center=object_config.center,
+                    scale=object_config.scale,
+                    rotate=object_config.rotate,
+                )
+            else:
+                raise ValueError(
+                    f"Unsupported object type: {type(object_config)}"
+                )
+
     def _add_data_collection_callbacks(self, step_skip: int):
         for object_ in self.objects:
             if isinstance(object_, ea.RigidBodyBase):
@@ -286,198 +310,145 @@ class ObjectsMixin(RigidMixin):
                         self.object2id[object_]]
                 )
 
+
 class VLMBlenderMixin:
     pass
 
 
-class FetchableRodObjectsEnvironment(
-    RodMixin, ObjectsMixin, SimulatedEnvironment
-):
+class BlenderMixin:
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.action_flags = []
-        self.attach_flags = []
+        self.blender_objects = []
+        self.blender_object2id = {}
+        self.blender_object_callbacks = []
 
-    def add_sphere(
+    def _get_top_camera_position(self):
+        x_max = max(list(point.center[0] for point in self.object_configs))
+        y_max = max(list(point.center[2] for point in self.object_configs))
+
+        x_min = min(list(point.center[0] for point in self.object_configs))
+        y_min = min(list(point.center[2] for point in self.object_configs))
+
+        x_avg = (x_max + x_min) / 2
+        y_avg = (y_max + y_min) / 2
+
+        return x_avg, y_avg
+
+    def setup_top_camera(
         self,
-        center: np.ndarray,
-        radius: float,
-        density: float,
-        theta: np.ndarray,
-    ) -> ea.Sphere:
-        """
-        Add a sphere to the environment.
-
-        Args:
-            center (np.ndarray): Center of the sphere.
-            radius (float): Radius of the sphere.
-        """
-        if theta is None:
-            theta_x = 0
-            theta_y = np.random.uniform(np.pi / 6, np.pi / 3)
-            theta_z = 0
-            theta = np.array([theta_x, theta_y, theta_z])
-
-        sphere = super().add_sphere(center, radius, density, theta)
-
-        self.action_flags.append(False)
-        self.attach_flags.append(False)
-
-        return sphere
-
-    def add_cylinder(self):
-        pass
-
-    def add_mesh_surface(
-        self,
-        mesh_path: str,
-        center: np.ndarray = np.array([0., 0., 0.]),
-        scale: np.ndarray = np.array([1., 1., 1.]),
-        rotate: np.ndarray = np.array([0., 0., 0.]),
-    ) -> MeshSurface:
-        mesh = super().add_mesh_surface(mesh_path, center, scale, rotate)
-
-        self.action_flags.append(False)
-        self.attach_flags.append(False)
-
-        return mesh
-
-    def _add_data_collection_callbacks(self, step_skip: int):
-        RodMixin._add_data_collection_callbacks(self, step_skip)
-        ObjectsMixin._add_data_collection_callbacks(self, step_skip)
-
-    def export_callbacks(self, filename):
-        """
-        Export the collected callback data to a file.
-
-        Args:
-            filename (str): The name of the file to save the callback data.
-        """
-
-        callback_data = {
-            "deciption": "rod is the softrobot, whose callback is a dict of positions,"
-            "velocities... \nobjects is all spheres, whose callback is a list"
-            "of each object's callback",
-            "rod_callback": self.rod_callback,
-            "object_callbacks": self.object_callbacks,
-        }
-
-        with open(filename, 'wb') as f:
-            pickle.dump(callback_data, f)
-
-    def visualize_2d(
-        self,
-        video_name="video.mp4",
-        fps=15,
-        xlim=None,
-        ylim=None,
-        skip=1,
-        equal_aspect=False,
-        target_last=False,
+        renderer: POVRayRenderer,
     ):
-
-        positions_over_time = np.array(self.rod_callback["position"])
-        positions_over_time = positions_over_time[::skip]
-        object_positions = [
-            np.array(params["position"][::skip])
-            for params in self.object_callbacks
-        ]
-
-        all_positions = np.concatenate([
-            positions_over_time.transpose(0, 2, 1).reshape(-1, 3),
-            *[pos.reshape(-1, 3) for pos in object_positions]
-        ],
-                                       axis=0)
-        # Automatically set xlim and ylim if not provided
-        if xlim is None:
-            x_min = np.min(all_positions[:, 2])
-            x_max = np.max(all_positions[:, 2])
-            xlim = (x_min, x_max)
-
-        if ylim is None:
-            y_min = np.min(all_positions[:, 0])
-            y_max = np.max(all_positions[:, 0])
-            ylim = (y_min, y_max)
-
-        if equal_aspect:
-            max_range = max(xlim[1] - xlim[0], ylim[1] - ylim[0])
-            xlim = (xlim[0], xlim[0] + max_range)
-            ylim = (ylim[0], ylim[0] + max_range)
-
-        print("plot video")
-        FFMpegWriter = animation.writers["ffmpeg"]
-        metadata = dict(
-            title="Movie Test", artist="Matplotlib", comment="Movie support!"
+        """
+        Set up the top camera position and look at point.
+        """
+        x_avg, y_avg = self._get_top_camera_position()
+        renderer.reset_stage(
+            top_camera_position=[x_avg, 6, y_avg],
+            top_camera_look_at=[x_avg, 0, y_avg]
         )
-        writer = FFMpegWriter(fps=fps, metadata=metadata)
-        fig = plt.figure(figsize=(10, 8), frameon=True, dpi=150)
-        ax = fig.add_subplot(111)
-        ax.set_xlim(*xlim)
-        ax.set_ylim(*ylim)
-        ax.set_xlabel("z [m]", fontsize=16)
-        ax.set_ylabel("x [m]", fontsize=16)
-        rod_lines_2d = ax.plot(
-            positions_over_time[0][2], positions_over_time[0][0]
-        )[0]
 
-        # 初始化一个变量来保存当前的圆形对象
-        object_plots = [None for _ in range(len(self.objects))]
+    def setup_blender_objects(self, renderer: POVRayRenderer, step: int):
 
-        with writer.saving(fig, video_name, dpi=150):
-            for time in tqdm(range(1, positions_over_time.shape[0])):
-                # 更新杆的位置
-                rod_lines_2d.set_xdata(positions_over_time[time][2])
-                rod_lines_2d.set_ydata(positions_over_time[time][0])
+        for object_ in self.objects:
+            id_ = self.object2id[object_]
+            object_callback = self.object_callbacks[id_]
+            if isinstance(object_, ea.Sphere):
+                renderer.add_stage_object(
+                    object_type='sphere',
+                    name=f'sphere{id_}',
+                    shape=str(self.object_configs[id_].shape),
+                    position=np.squeeze(object_callback['position'][step]),
+                    radius=np.squeeze(object_callback['radius'][step]),
+                )
+            elif isinstance(object_, MeshSurface):
+                scale = np.linalg.norm(object_.mesh_scale)
+                renderer.add_stage_object(
+                    object_type='mesh',
+                    name=f'mesh{id_}',
+                    mesh_name='cube_mesh',
+                    shape=str(self.object_configs[id_].shape),
+                    position=np.squeeze(object_callback['position'][step]),
+                    scale=scale,
+                    matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
+                )
 
-                # 移除旧的圆形（如果存在）
-                for idx, obj in enumerate(self.objects):
-                    if object_plots[idx] is not None:
-                        object_plots[idx].remove()
+    def visualize_3d_blender(
+        self,
+        video_name,
+        output_images_dir,
+        fps,
+        width=960,
+        height=540,
+    ):
+        top_view_dir = os.path.join(output_images_dir, "top")
+        blender_renderer = BlenderRenderer(top_view_dir)
 
-                    if isinstance(obj, ea.Sphere):
-                        # 添加新的圆形
-                        center_x = object_positions[idx][time][2]
-                        center_y = object_positions[idx][time][0]
-                        radius = obj.radius[0]
-                        color = 'red' if target_last and idx == len(
-                            self.objects
-                        ) - 1 else 'lightblue'
-                        object_plots[idx] = plt.Circle((center_x, center_y),
-                                                       radius,
-                                                       edgecolor='b',
-                                                       facecolor=color)
-                        ax.add_patch(object_plots[idx])
-                    elif isinstance(obj, MeshSurface):
-
-                        # 添加新的圆点
-                        center_x = object_positions[idx][time][2]
-                        center_y = object_positions[idx][time][0]
-                        color = 'red' if target_last and idx == len(
-                            self.objects
-                        ) - 1 else 'lightblue'
-                        object_plots[idx] = ax.plot(
-                            center_x, center_y, 'o', color=color
-                        )[0]
-
-                # 捕捉当前帧
-                writer.grab_frame()
-
-        # 关闭图形
-        plt.close(plt.gcf())
-
-    def visualize_3d(self, video_name, fps, xlim=None, ylim=None, zlim=None):
-        rod_objects_3d_visualize(
-            np.array(self.rod_callback["position"]),
-            [np.array(params["position"]) for params in self.object_callbacks],
-            self.objects,
-            video_name,
-            fps,
-            1,
-            xlim,
-            ylim,
-            zlim,
+        renderer = POVRayRenderer(
+            output_filename=video_name,
+            output_images_dir=output_images_dir,
+            fps=fps,
+            width=width,
+            height=height,
         )
+
+        frames = len(self.rod_callback['time'])
+        for i in tqdm(range(frames), disable=False, desc="Rendering .povray"):
+
+            self.setup_top_camera(renderer)
+            self.setup_blender_objects(renderer, i)
+            renderer.render_single_step(
+                data={
+                    "rod_position": self.rod_callback["position"][i],
+                    "rod_radius": self.rod_callback["radius"][i],
+                },
+                save_script_file=True,
+                save_img=False,
+            )
+
+        blender_renderer.batch_rendering(top_view_dir, top_view_dir)
+        renderer.create_video(only_top=True)
+
+    def single_step_3d_blend(
+        self,
+        width: int = 960,
+        height: int = 540,
+        current_step: int = 0,
+        interval: int = 1,
+        save_img: bool = False,
+        output_images_dir: str = ""
+    ) -> np.ndarray:
+        if current_step % interval == 0:
+            top_view_dir = os.path.join(output_images_dir, "top")
+            blender_renderer = BlenderRenderer(top_view_dir)
+
+            renderer = POVRayRenderer(
+                output_images_dir=output_images_dir,
+                width=width,
+                height=height,
+            )
+            self.setup_top_camera(renderer)
+
+            self.setup_blender_objects(renderer, 0)
+
+            pov_scripts = renderer.render_single_step(
+                data={
+                    "rod_position": self.shearable_rod.position_collection,
+                    "rod_radius": self.shearable_rod.radius,
+                },
+                save_img=False,
+            )
+
+            rendered_image = blender_renderer.single_step_rendering(
+                current_step,
+                pov_scripts["top"],
+                top_view_dir,
+                save_img,
+            )
+            # return rendered_image
+
+
+class VLMBlender:
 
     def visualize_3d_blender(
         self,
@@ -649,6 +620,270 @@ class RodSphereEnvironment(RodMixin, RigidMixin, SimulatedEnvironment):
         )
 
 
+class FetchableRodObjectsEnvironment(
+    RodMixin,
+    ObjectsMixin,
+    BlenderMixin,
+    SimulatedEnvironment,
+):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.action_flags = []
+        self.attach_flags = []
+
+    def add_sphere(
+        self,
+        center: np.ndarray,
+        radius: float,
+        density: float,
+        theta: np.ndarray = [0., 0., 0.],
+    ) -> ea.Sphere:
+        """
+        Add a sphere to the environment.
+
+        Args:
+            center (np.ndarray): Center of the sphere.
+            radius (float): Radius of the sphere.
+        """
+        sphere = super().add_sphere(center, radius, density, theta)
+
+        self.action_flags.append(False)
+        self.attach_flags.append(False)
+
+        return sphere
+
+    def add_cylinder(self):
+        pass
+
+    def add_mesh_surface(
+        self,
+        mesh_path: str,
+        center: np.ndarray = np.array([0., 0., 0.]),
+        scale: np.ndarray = np.array([1., 1., 1.]),
+        rotate: np.ndarray = np.array([0., 0., 0.]),
+    ) -> MeshSurface:
+        mesh = super().add_mesh_surface(mesh_path, center, scale, rotate)
+
+        self.action_flags.append(False)
+        self.attach_flags.append(False)
+
+        return mesh
+
+    def _add_data_collection_callbacks(self, step_skip: int):
+        RodMixin._add_data_collection_callbacks(self, step_skip)
+        ObjectsMixin._add_data_collection_callbacks(self, step_skip)
+
+    def export_callbacks(self, filename):
+        """
+        Export the collected callback data to a file.
+
+        Args:
+            filename (str): The name of the file to save the callback data.
+        """
+
+        callback_data = {
+            "deciption": "rod is the softrobot, whose callback is a dict of positions,"
+            "velocities... \nobjects is all spheres, whose callback is a list"
+            "of each object's callback",
+            "rod_callback": self.rod_callback,
+            "object_callbacks": self.object_callbacks,
+        }
+
+        with open(filename, 'wb') as f:
+            pickle.dump(callback_data, f)
+
+    def visualize_2d(
+        self,
+        video_name="video.mp4",
+        fps=15,
+        xlim=None,
+        ylim=None,
+        skip=1,
+        equal_aspect=False,
+        target_last=False,
+    ):
+
+        positions_over_time = np.array(self.rod_callback["position"])
+        positions_over_time = positions_over_time[::skip]
+        object_positions = [
+            np.array(params["position"][::skip])
+            for params in self.object_callbacks
+        ]
+
+        all_positions = np.concatenate([
+            positions_over_time.transpose(0, 2, 1).reshape(-1, 3),
+            *[pos.reshape(-1, 3) for pos in object_positions]
+        ],
+                                       axis=0)
+        # Automatically set xlim and ylim if not provided
+        if xlim is None:
+            x_min = np.min(all_positions[:, 2])
+            x_max = np.max(all_positions[:, 2])
+            xlim = (x_min, x_max)
+
+        if ylim is None:
+            y_min = np.min(all_positions[:, 0])
+            y_max = np.max(all_positions[:, 0])
+            ylim = (y_min, y_max)
+
+        if equal_aspect:
+            max_range = max(xlim[1] - xlim[0], ylim[1] - ylim[0])
+            xlim = (xlim[0], xlim[0] + max_range)
+            ylim = (ylim[0], ylim[0] + max_range)
+
+        print("plot video")
+        FFMpegWriter = animation.writers["ffmpeg"]
+        metadata = dict(
+            title="Movie Test", artist="Matplotlib", comment="Movie support!"
+        )
+        writer = FFMpegWriter(fps=fps, metadata=metadata)
+        fig = plt.figure(figsize=(10, 8), frameon=True, dpi=150)
+        ax = fig.add_subplot(111)
+        ax.set_xlim(*xlim)
+        ax.set_ylim(*ylim)
+        ax.set_xlabel("z [m]", fontsize=16)
+        ax.set_ylabel("x [m]", fontsize=16)
+        rod_lines_2d = ax.plot(
+            positions_over_time[0][2], positions_over_time[0][0]
+        )[0]
+
+        # 初始化一个变量来保存当前的圆形对象
+        object_plots = [None for _ in range(len(self.objects))]
+
+        with writer.saving(fig, video_name, dpi=150):
+            for time in tqdm(range(1, positions_over_time.shape[0])):
+                # 更新杆的位置
+                rod_lines_2d.set_xdata(positions_over_time[time][2])
+                rod_lines_2d.set_ydata(positions_over_time[time][0])
+
+                # 移除旧的圆形（如果存在）
+                for idx, obj in enumerate(self.objects):
+                    if object_plots[idx] is not None:
+                        object_plots[idx].remove()
+
+                    if isinstance(obj, ea.Sphere):
+                        # 添加新的圆形
+                        center_x = object_positions[idx][time][2]
+                        center_y = object_positions[idx][time][0]
+                        radius = obj.radius[0]
+                        color = 'red' if target_last and idx == len(
+                            self.objects
+                        ) - 1 else 'lightblue'
+                        object_plots[idx] = plt.Circle((center_x, center_y),
+                                                       radius,
+                                                       edgecolor='b',
+                                                       facecolor=color)
+                        ax.add_patch(object_plots[idx])
+                    elif isinstance(obj, MeshSurface):
+
+                        # 添加新的圆点
+                        center_x = object_positions[idx][time][2]
+                        center_y = object_positions[idx][time][0]
+                        color = 'red' if target_last and idx == len(
+                            self.objects
+                        ) - 1 else 'lightblue'
+                        object_plots[idx] = ax.plot(
+                            center_x, center_y, 'o', color=color
+                        )[0]
+
+                # 捕捉当前帧
+                writer.grab_frame()
+
+        # 关闭图形
+        plt.close(plt.gcf())
+
+    def visualize_3d(self, video_name, fps, xlim=None, ylim=None, zlim=None):
+        rod_objects_3d_visualize(
+            np.array(self.rod_callback["position"]),
+            [np.array(params["position"]) for params in self.object_callbacks],
+            self.objects,
+            video_name,
+            fps,
+            1,
+            xlim,
+            ylim,
+            zlim,
+        )
+
+    def visualize_3d_povray(
+        self,
+        video_name,
+        output_images_dir,
+        fps,
+        width=1920,
+        height=1080,
+    ):
+        if os.path.exists(output_images_dir):
+            shutil.rmtree(output_images_dir)
+        xz_positions = [
+            np.array(callback["position"])[:, [0, 2], 0]
+            for callback in self.object_callbacks
+        ]
+        xz_positions = np.concatenate(xz_positions, axis=0)
+        x_min, z_min = np.min(xz_positions, axis=0)
+        x_max, z_max = np.max(xz_positions, axis=0)
+        x_mid, z_mid = (x_min + x_max) / 2, (z_min + z_max) / 2
+
+        renderer = POVRayRenderer(
+            output_filename=video_name,
+            output_images_dir=output_images_dir,
+            fps=fps,
+            width=width,
+            height=height,
+            top_camera_position=[x_mid, 20, z_mid],
+            top_camera_look_at=[x_mid, 0, z_mid],
+        )
+
+        frames = len(self.rod_callback['time'])
+        for i in tqdm(range(frames), disable=False, desc="Rendering .povray"):
+            renderer.reset_stage(
+                top_camera_position=[x_mid, 10, z_mid],
+                top_camera_look_at=[x_mid, 0, z_mid],
+            )
+            for object_ in self.objects:
+                id_ = self.object2id[object_]
+                object_callback = self.object_callbacks[id_]
+                if isinstance(object_, ea.Sphere):
+                    renderer.add_stage_object(
+                        object_type='sphere',
+                        name=f'sphere{id_}',
+                        position=np.squeeze(object_callback['position'][i]),
+                        radius=np.squeeze(object_callback['radius'][i]),
+                    )
+                elif isinstance(object_, MeshSurface):
+                    scale = np.linalg.norm(object_.mesh_scale)
+                    renderer.add_stage_object(
+                        object_type='mesh',
+                        name=f'mesh{id_}',
+                        mesh_name='cube_mesh',
+                        position=np.squeeze(object_callback['position'][i]),
+                        scale=scale,
+                        matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
+                    )
+            # start = time.time()
+            renderer.render_single_step(
+                data={
+                    "rod_position": self.rod_callback["position"][i],
+                    "rod_radius": self.rod_callback["radius"][i],
+                }
+                # save_img=True,
+            )
+            # end = time.time()
+            # print("Render time per render step: ", end - start)
+        renderer.process_povray(multi_processing=True)
+        renderer.create_video()
+
+
+# class RodObjectsEnvironment(SimulateMixin, RodObjectsMixin, ABC):
+
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+
+
+#     @abstractmethod
+#     def setup(self):
+#         pass
 class RodControlMixin(SimulatedEnvironment, gym.Env):
 
     def __init__(

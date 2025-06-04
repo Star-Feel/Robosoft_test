@@ -10,7 +10,6 @@ import elastica as ea
 import numpy as np
 from elastica import RigidBodyBase
 from elastica._calculus import _isnan_check
-from stl import mesh
 
 from ..arguments import (MeshSurfaceArguments, RodArguments,
                          SimulatorArguments, SphereArguments, SuperArguments)
