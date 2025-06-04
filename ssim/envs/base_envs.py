@@ -286,6 +286,9 @@ class ObjectsMixin(RigidMixin):
                         self.object2id[object_]]
                 )
 
+class VLMBlenderMixin:
+    pass
+
 
 class FetchableRodObjectsEnvironment(
     RodMixin, ObjectsMixin, SimulatedEnvironment
