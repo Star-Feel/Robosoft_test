@@ -1,17 +1,22 @@
-import itertools
+__all___ = [
+    "CameraArguments",
+    "SphereArguments",
+    "MeshArguments",
+    "RodArguments",
+    "VLNBlenderRenderer",
+    "VLMBlenderRenderer",
+]
 import math
 import os
-import random
 import re
 import time
-from io import BytesIO
+from dataclasses import dataclass
+from typing import Sequence
 
 import bpy
 import mathutils
 import numpy as np
-import PIL
 import tqdm
-from PIL import Image
 
 ASSET_PATHS = {
     "Obj": "./scene_assets/living_room/soccer/Obj.obj",
@@ -26,6 +31,34 @@ ASSET_PATHS = {
     "conbyfr2": "./scene_assets/living_room/Cone_Buoy_2/conbyfr2.obj",
     "truncated_cone_base": "scene_assets/robot/truncated_cone_base.obj",
 }
+
+
+@dataclass
+class CameraArguments:
+    location: Sequence[float]
+    angle: float
+    look_at: Sequence[float]
+
+
+@dataclass
+class SphereArguments:
+    shape: str
+    position: Sequence[float]
+    radius: float
+
+
+@dataclass
+class MeshArguments:
+    shape: str
+    position: Sequence[float]
+    scale: float
+
+
+@dataclass
+class RodArguments:
+    positions: Sequence
+    radius: Sequence[float]
+    color: Sequence[float] = (0, 0, 0)
 
 
 class VLNBlenderRenderer:
@@ -232,7 +265,7 @@ class VLNBlenderRenderer:
                 bpy.data.objects.remove(obj, do_unlink=True)
 
         # 重新创建蛇
-        self.set_snake()
+        self.set_snake_by_pov_content()
 
     def load_pov_settings(
         self,
@@ -241,12 +274,126 @@ class VLNBlenderRenderer:
         obj_path=None,
     ):
         self.load_pov_content(pov_file, pov_script)
-        self.set_camera()
+        self.set_camera_by_pov_centent()
         # self.set_light()
-        self.load_obj(obj_path)
-        self.set_snake()
+        self.load_obj_by_pov_content(obj_path)
+        self.set_snake_by_pov_content()
 
-    def load_obj(self, obj_path=None):
+    def load_obj(self, shape: str):
+        if shape == "conbyfr":
+            tar_idx = 1
+        elif shape == "conbyfr2":
+            tar_idx = 3
+        else:
+            tar_idx = 0
+        obj_path = ASSET_PATHS[shape]
+
+        bpy.ops.wm.obj_import(filepath=obj_path)
+        for idx, obj in enumerate(bpy.context.selected_objects):
+            if not obj.data.materials:
+                material_name = "MyMaterial"  # 材质名称
+                material = bpy.data.materials.new(name=material_name)
+                # 设置材质的颜色
+                material.diffuse_color = (1.0, 0.0, 0.0, 1.0)
+                obj.data.materials.append(material)
+            if idx == tar_idx:
+                continue
+            else:
+                bpy.data.objects.remove(obj, do_unlink=True)
+
+    def reset_obj_data(
+        self,
+        obj,
+        location: Sequence = None,
+        rotation_euler: Sequence = None,
+        scale: Sequence = None,
+    ):
+        if location is None:
+            location = obj.location
+        if rotation_euler is None:
+            rotation_euler = obj.rotation_euler
+        if scale is None:
+            scale = obj.scale
+        obj.location = location
+        obj.rotation_euler = rotation_euler
+        obj.scale = scale
+        # 将物体位置设回球体中心
+        obj.location = location
+
+    def auto_adjust_spheres_obj_data(self, obj, location, radius):
+        location = self.coord_pov2blend(*location)
+        # 如何将物体限制在球体内？
+
+        # 计算物体边界盒的对角线长度（作为"直径"）
+        local_bbox_corners = [
+            mathutils.Vector(corner) for corner in obj.bound_box
+        ]
+        max_dimension = max((local_bbox_corners[0]
+                             - local_bbox_corners[6]).length,
+                            (local_bbox_corners[1]
+                             - local_bbox_corners[7]).length,
+                            (local_bbox_corners[2]
+                             - local_bbox_corners[4]).length)
+
+        # 计算需要的缩放系数来使物体恰好适合球体
+        # 使用直径的一半（半径）与球体半径比较
+        scale_factor = (radius * 2) / max_dimension
+
+        # 应用缩放（略微减小以确保不会超出）
+        # 0.95是安全系数，可以根据需要调整
+        safe_scale = scale_factor
+        scale = (safe_scale, safe_scale, safe_scale)
+        rotation_euler = (math.radians(90), 0, math.radians(90))
+        self.reset_obj_data(
+            obj,
+            location,
+            rotation_euler,
+            scale,
+        )
+
+    def auto_adjust_mesh_obj_data(self, obj, location, scale):
+
+        if "Cup" in obj.name:
+            rotation_euler = (math.radians(90), 0, 0)
+        elif 'Coffee_cup_withe' in obj.name:
+            rotation_euler = (0, 0, math.radians(90))
+        elif 'Book_by_Peter_Iliev_obj' in obj.name:
+            rotation_euler = (0, math.radians(90), 0)
+        elif 'big_pillow' in obj.name:
+            rotation_euler = (0, 0, 0)
+        elif 'Cylinder' in obj.name:
+            rotation_euler = (math.radians(90), 0, 0)
+        else:
+            rotation_euler = (math.radians(90), 0, math.radians(90))
+
+        # 计算物体边界盒的对角线长度（作为"直径"）
+        local_bbox_corners = [
+            mathutils.Vector(corner) for corner in obj.bound_box
+        ]
+        dimensions = [
+            (local_bbox_corners[0] - local_bbox_corners[6]).length,  # z
+            (local_bbox_corners[1] - local_bbox_corners[7]).length,  # x
+            (local_bbox_corners[2] - local_bbox_corners[4]).length  # y
+        ]
+
+        max_dimension = np.linalg.norm(dimensions)
+
+        # 计算需要的缩放系数来使物体恰好适合原mesh
+        scale_factor = scale / max_dimension  # scale 已经是乘过2的了
+
+        # 应用缩放（略微减小以确保不会超出）
+        # 0.95是安全系数，可以根据需要调整
+        safe_scale = scale_factor * 1
+        scale = (safe_scale, safe_scale, safe_scale)
+        self.reset_obj_data(obj, scale=scale)
+
+        # 根据高度调整中心位置
+        y_height = dimensions[2] * safe_scale
+        shiftted_pos = (location[0], y_height / 2, location[2])
+        pos = self.coord_pov2blend(*shiftted_pos)
+        self.reset_obj_data(obj, location=pos, rotation_euler=rotation_euler)
+
+    def load_obj_by_pov_content(self, obj_path=None):
         # obj_path == None, then load obj randomly
         sphere_matchs = re.findall(
             self.sphere_parttern, self.pov_content, re.DOTALL
@@ -257,47 +404,15 @@ class VLNBlenderRenderer:
 
         if obj_path is None:
 
-            for idx, sphere_match in enumerate(sphere_matchs):
+            for idx, sphere_match in enumerate(sphere_matchs + mesh_matchs):
 
                 shape_match = re.search(r'shape\s+([^\s>]+)', sphere_match)
                 shape = shape_match.group(1)
-                if shape == "Cone_Buoy":
-                    tar_idx = 1
-                elif shape == "Cone_Buoy_2":
-                    tar_idx = 3
-                else:
-                    tar_idx = 0
-                obj_path = ASSET_PATHS[shape]
-
-                bpy.ops.wm.obj_import(filepath=obj_path)
-                for idx, obj in enumerate(bpy.context.selected_objects):
-                    if idx == tar_idx:
-                        continue
-                    else:
-                        bpy.data.objects.remove(obj, do_unlink=True)
-
-            for idx, mesh_match in enumerate(mesh_matchs):
-                # obj_chosen = random.choice(obj_list)
-
-                mesh_shape = re.search(r'shape\s+([^\s>]+)', mesh_match)
-                shape = mesh_shape.group(1)
-                if shape == "conbyfr":
-                    tar_idx = 1
-                elif shape == "conbyfr2":
-                    tar_idx = 3
-                else:
-                    tar_idx = 0
-                obj_path = ASSET_PATHS[shape]
-
-                bpy.ops.wm.obj_import(filepath=obj_path)
-                for idx, obj in enumerate(bpy.context.selected_objects):
-                    if idx == tar_idx:
-                        continue
-                    else:
-                        bpy.data.objects.remove(obj, do_unlink=True)
+                self.load_obj(shape)
 
             bpy.ops.object.select_all(action='SELECT')
 
+        # set position and scale
         for idx, sphere_match in enumerate(sphere_matchs):
             sphere_data_match = re.search(
                 r'<([^>]*)>\s*,\s*([0-9.]+)', sphere_match
@@ -305,113 +420,58 @@ class VLNBlenderRenderer:
 
             if sphere_data_match:
                 pos = map(float, sphere_data_match.group(1).split(','))
-                pos = self.coord_pov2blend(*pos)
                 radius = float(sphere_data_match.group(2))
 
                 obj = bpy.context.selected_objects[idx + 4]
-                obj.location = tuple(pos)
-                obj.rotation_euler = (math.radians(90), 0, math.radians(90))
-                # 如何将物体限制在球体内？
+                self.auto_adjust_spheres_obj_data(obj, pos, radius)
 
-                # 计算物体边界盒的对角线长度（作为"直径"）
-                local_bbox_corners = [
-                    mathutils.Vector(corner) for corner in obj.bound_box
-                ]
-                max_dimension = max(
-                    (local_bbox_corners[0] - local_bbox_corners[6]).length,
-                    (local_bbox_corners[1] - local_bbox_corners[7]).length,
-                    (local_bbox_corners[2] - local_bbox_corners[4]).length
-                )
-
-                # 计算需要的缩放系数来使物体恰好适合球体
-                # 使用直径的一半（半径）与球体半径比较
-                scale_factor = (radius * 2) / max_dimension
-
-                # 应用缩放（略微减小以确保不会超出）
-                # 0.95是安全系数，可以根据需要调整
-                safe_scale = scale_factor
-                obj.scale = (safe_scale, safe_scale, safe_scale)
-
-                # 将物体位置设回球体中心
-                obj.location = tuple(pos)
-                if not obj.data.materials:
-                    material_name = "MyMaterial"  # 材质名称
-                    material = bpy.data.materials.new(name=material_name)
-                    # 设置材质的颜色
-                    material.diffuse_color = (1.0, 0.0, 0.0, 1.0)
-                    obj.data.materials.append(material)
-
-        # mesh_matchs = re.findall(self.mesh_pattern, self.pov_content, re.DOTALL)
         for idx, mesh_match in enumerate(mesh_matchs):
             mesh_data_match = re.search(r'translate\s*<([^>]*)>', mesh_match)
             mesh_scale = re.search(r'scale\s*([0-9.]+)', mesh_match)
             if mesh_data_match:
-                origin_pos = list(
+                location = list(
                     map(float,
                         mesh_data_match.group(1).split(','))
                 )
-                pos = self.coord_pov2blend(*origin_pos)
                 scale = float(mesh_scale.group(1))
-                # scale = 0.5
 
                 obj = bpy.context.selected_objects[4 + len(sphere_matchs)
                                                    + idx]
-                obj.location = tuple(pos)
-                if "Cup" in obj.name:
-                    obj.rotation_euler = (math.radians(90), 0, 0)
-                elif 'Coffee_cup_withe' in obj.name:
-                    obj.rotation_euler = (0, 0, math.radians(90))
-                elif 'Book_by_Peter_Iliev_obj' in obj.name:
-                    obj.rotation_euler = (0, math.radians(90), 0)
-                elif 'big_pillow' in obj.name:
-                    obj.rotation_euler = (0, 0, 0)
-                elif 'Cylinder' in obj.name:
-                    obj.rotation_euler = (math.radians(90), 0, 0)
-                else:
-                    obj.rotation_euler = (
-                        math.radians(90), 0, math.radians(90)
-                    )
+                self.auto_adjust_mesh_obj_data(obj, location, scale)
 
-                # 计算物体边界盒的对角线长度（作为"直径"）
-                local_bbox_corners = [
-                    mathutils.Vector(corner) for corner in obj.bound_box
-                ]
-                dimensions = [
-                    (local_bbox_corners[0]
-                     - local_bbox_corners[6]).length,  # z
-                    (local_bbox_corners[1]
-                     - local_bbox_corners[7]).length,  # x
-                    (local_bbox_corners[2] - local_bbox_corners[4]).length  # y
-                ]
+    def set_camera(
+        self,
+        location: Sequence,
+        angle: float,
+        look_at: Sequence,
+    ):
+        x, y, z = location
+        x, y, z = self.coord_pov2blend(x, y, z)
+        bpy.ops.object.camera_add(location=(x, y, z))
+        # 获取刚创建的相机对象并设置为活动相机
+        cam = bpy.context.object
+        bpy.context.scene.camera = cam
 
-                if "big_pillow" in obj.name or "pillow" in obj.name:
-                    max_dimension = max(dimensions)
-                else:
-                    max_dimension = np.linalg.norm(dimensions)
+        # 转换 POV-Ray 角度为 Blender 焦距
+        bpy.data.cameras['Camera'].lens = 16 / math.tan(
+            math.radians(angle / 2)
+        )
 
-                # 计算需要的缩放系数来使物体恰好适合原mesh
-                scale_factor = scale / max_dimension  # scale 已经是乘过2的了
+        x, y, z = look_at
+        x, y, z = self.coord_pov2blend(x, y, z)
+        # 创建一个目标空物体
+        bpy.ops.object.empty_add(type='PLAIN_AXES', location=(x, y, z))
+        target = bpy.context.object
+        target.name = "CameraTarget"
 
-                # 应用缩放（略微减小以确保不会超出）
-                # 0.95是安全系数，可以根据需要调整
-                safe_scale = scale_factor * 1
-                obj.scale = (safe_scale, safe_scale, safe_scale)
+        # 添加 Track To 约束
+        cam = bpy.data.objects['Camera']
+        constraint = cam.constraints.new('TRACK_TO')
+        constraint.target = target
+        constraint.track_axis = 'TRACK_NEGATIVE_Z'
+        constraint.up_axis = 'UP_Y'
 
-                # 根据高度调整中心位置
-                y_height = dimensions[2] * safe_scale
-                shiftted_pos = (origin_pos[0], y_height / 2, origin_pos[2])
-                pos = self.coord_pov2blend(*shiftted_pos)
-                # 将物体位置设回新的中心
-                obj.location = tuple(pos)
-
-                if not obj.data.materials:
-                    material_name = "MyMaterial"  # 材质名称
-                    material = bpy.data.materials.new(name=material_name)
-                    # 设置材质的颜色
-                    material.diffuse_color = (1.0, 0.0, 0.0, 1.0)
-                    obj.data.materials.append(material)
-
-    def set_camera(self):
+    def set_camera_by_pov_centent(self):
         # 设置相机
         camera_match = re.search(
             r'camera\s*{([^}]*)}', self.pov_content, re.DOTALL
@@ -422,38 +482,19 @@ class VLNBlenderRenderer:
             # 提取相机位置
             location_match = re.search(r'location\s*<([^>]*)>', camera_text)
             if location_match:
-                x, y, z = map(float, location_match.group(1).split(','))
-                x, y, z = self.coord_pov2blend(x, y, z)
-                bpy.ops.object.camera_add(location=(x, y, z))
-                # 获取刚创建的相机对象并设置为活动相机
-                cam = bpy.context.object
-                bpy.context.scene.camera = cam
+                location = list(map(float, location_match.group(1).split(',')))
 
             # 提取相机角度
             angle_match = re.search(r'angle\s*(\d+)', camera_text)
             if angle_match:
                 angle = float(angle_match.group(1))
-                # 转换 POV-Ray 角度为 Blender 焦距
-                bpy.data.cameras['Camera'].lens = 16 / math.tan(
-                    math.radians(angle / 2)
-                )
 
             # 提取相机朝向
             look_at_match = re.search(r'look_at\s*<([^>]*)>', camera_text)
             if look_at_match:
-                x, y, z = map(float, look_at_match.group(1).split(','))
-                x, y, z = self.coord_pov2blend(x, y, z)
-                # 创建一个目标空物体
-                bpy.ops.object.empty_add(type='PLAIN_AXES', location=(x, y, z))
-                target = bpy.context.object
-                target.name = "CameraTarget"
+                look_at = list(map(float, look_at_match.group(1).split(',')))
 
-                # 添加 Track To 约束
-                cam = bpy.data.objects['Camera']
-                constraint = cam.constraints.new('TRACK_TO')
-                constraint.target = target
-                constraint.track_axis = 'TRACK_NEGATIVE_Z'
-                constraint.up_axis = 'UP_Y'
+            self.set_camera(location=location, angle=angle, look_at=look_at)
 
     def set_light(self):
         # 设置光源
@@ -518,120 +559,104 @@ class VLNBlenderRenderer:
                     else:
                         sphere.data.materials.append(material)
 
-    def set_snake(self):
+    def set_snake(self, positions, radius, color):
+
+        curve_data = bpy.data.curves.new('SweepCurve', 'CURVE')
+        curve_data.dimensions = '3D'
+        curve_data.resolution_u = 12
+        curve_data.bevel_depth = 0.02  # 0.01  # 先设置一个小值，后面会根据每个点调整
+
+        # 创建样条
+        polyline = curve_data.splines.new('BEZIER')
+        polyline.bezier_points.add(len(positions) - 1)
+
+        # 设置点位置
+        for idx, (pos, radius) in enumerate(zip(positions, radius)):
+            pos = self.coord_pov2blend(*pos)
+            if idx > 15:
+                polyline.bezier_points[idx].co = pos
+                polyline.bezier_points[idx].radius = np.arange(1.4, 0.2, -0.3)[
+                    idx - len(positions)]
+                polyline.bezier_points[idx].handle_left_type = 'AUTO'
+                polyline.bezier_points[idx].handle_right_type = 'AUTO'
+            else:
+                polyline.bezier_points[idx].co = pos
+                polyline.bezier_points[idx].radius = 1.5
+                polyline.bezier_points[idx].handle_left_type = 'AUTO'
+                polyline.bezier_points[idx].handle_right_type = 'AUTO'
+
+        # 创建曲线对象
+        curve_obj = bpy.data.objects.new('SphereSweep_0', curve_data)
+        bpy.context.collection.objects.link(curve_obj)
+
+        r, g, b = color
+
+        # 创建材质
+        material = bpy.data.materials.new(name=f"SweepMaterial_0")
+        material.use_nodes = True
+
+        nodes = material.node_tree.nodes
+        links = material.node_tree.links
+
+        # 清除默认节点
+        for node in nodes:
+            nodes.remove(node)
+
+        # 创建渐变纹理节点
+        gradient_tex = nodes.new(type="ShaderNodeTexGradient")
+        gradient_tex.gradient_type = 'LINEAR'
+
+        # 创建颜色渐变节点
+        color_ramp = nodes.new(type="ShaderNodeValToRGB")
+        color_ramp.color_ramp.elements[0].color = (0, 0, 0, 1)  # 黑色
+        color_ramp.color_ramp.elements[1].color = (r, g, b, 1)  # 其他颜色
+
+        # 创建 Principled BSDF 节点
+        bsdf = nodes.new(type="ShaderNodeBsdfPrincipled")
+        bsdf.inputs["Base Color"].default_value = (r, g, b, 1)
+
+        # 创建材质输出节点
+        material_output = nodes.new(type="ShaderNodeOutputMaterial")
+
+        # 连接节点
+        links.new(color_ramp.inputs[0], gradient_tex.outputs[0])
+        links.new(bsdf.inputs["Base Color"], color_ramp.outputs[0])
+        links.new(material_output.inputs["Surface"], bsdf.outputs[0])
+
+        # 将材质应用到曲线对象
+        curve_obj.data.materials.append(material)
+
+    def set_snake_by_pov_content(self):
         # 处理球扫描（sphere_sweep）
         sphere_sweep_matches = re.findall(
             r'sphere_sweep\s*{([^}]*)}', self.pov_content, re.DOTALL
         )
-        for i, sweep_text in enumerate(sphere_sweep_matches):
-            # 提取类型和点数
-            header_match = re.search(
-                r'(linear_spline|cubic_spline|b_spline)\s*(\d+)', sweep_text
+        sweep_text = sphere_sweep_matches[0]
+        # 提取类型和点数
+        header_match = re.search(
+            r'(linear_spline|cubic_spline|b_spline)\s*(\d+)', sweep_text
+        )
+        if header_match:
+            # 提取所有点和半径
+            position_list = []
+            radius_list = []
+            point_matches = re.findall(
+                r',<([^>]*)>\s*,\s*([0-9.e+-]+)', sweep_text
             )
-            if header_match:
+            for point_match in point_matches:
+                pos = tuple(map(float, point_match[0].split(',')))
+                radius = float(point_match[1])
+                position_list.append(pos)
+                radius_list.append(radius)
 
-                # 提取所有点和半径
-                points = []
-                point_matches = re.findall(
-                    r',<([^>]*)>\s*,\s*([0-9.e+-]+)', sweep_text
-                )
-                for point_match in point_matches:
-                    pos = tuple(map(float, point_match[0].split(',')))
-                    pos = self.coord_pov2blend(*pos)
-                    radius = float(point_match[1])
-                    points.append((pos, radius))
-
-                # 创建曲线
-                curve_data = bpy.data.curves.new('SweepCurve', 'CURVE')
-                curve_data.dimensions = '3D'
-                curve_data.resolution_u = 12
-                curve_data.bevel_depth = 0.02  #0.01  # 先设置一个小值，后面会根据每个点调整
-
-                # 创建样条
-                polyline = curve_data.splines.new('BEZIER')
-                polyline.bezier_points.add(len(points) - 1)
-
-                # 设置点位置
-                for idx, (pos, radius) in enumerate(points):
-                    if idx > 15:
-                        polyline.bezier_points[idx].co = pos
-                        polyline.bezier_points[idx].radius = np.arange(
-                            1.4, 0.2, -0.3
-                        )[idx - len(points)]
-                        polyline.bezier_points[idx].handle_left_type = 'AUTO'
-                        polyline.bezier_points[idx].handle_right_type = 'AUTO'
-                    else:
-                        polyline.bezier_points[idx].co = pos
-                        polyline.bezier_points[idx].radius = 1.5
-                        polyline.bezier_points[idx].handle_left_type = 'AUTO'
-                        polyline.bezier_points[idx].handle_right_type = 'AUTO'
-
-                # 创建曲线对象
-                curve_obj = bpy.data.objects.new(
-                    'SphereSweep_' + str(i), curve_data
-                )
-                bpy.context.collection.objects.link(curve_obj)
-
-                # 提取材质颜色
-                color_match = re.search(
-                    r'pigment\s*{\s*color\s*rgb\s*<([^>]*)>', sweep_text
-                )
-                if color_match:
-                    r, g, b = map(float, color_match.group(1).split(','))
-
-                    # 创建材质
-                    material = bpy.data.materials.new(
-                        name=f"SweepMaterial_{i}"
-                    )
-                    material.use_nodes = True
-
-                    nodes = material.node_tree.nodes
-                    links = material.node_tree.links
-
-                    # 清除默认节点
-                    for node in nodes:
-                        nodes.remove(node)
-
-                    # 创建渐变纹理节点
-                    gradient_tex = nodes.new(type="ShaderNodeTexGradient")
-                    gradient_tex.gradient_type = 'LINEAR'
-
-                    # 创建颜色渐变节点
-                    color_ramp = nodes.new(type="ShaderNodeValToRGB")
-                    color_ramp.color_ramp.elements[0].color = (
-                        0, 0, 0, 1
-                    )  # 黑色
-                    color_ramp.color_ramp.elements[1].color = (
-                        r, g, b, 1
-                    )  # 其他颜色
-
-                    # 创建 Principled BSDF 节点
-                    bsdf = nodes.new(type="ShaderNodeBsdfPrincipled")
-                    bsdf.inputs["Base Color"].default_value = (r, g, b, 1)
-
-                    # 创建材质输出节点
-                    material_output = nodes.new(
-                        type="ShaderNodeOutputMaterial"
-                    )
-
-                    # 连接节点
-                    links.new(color_ramp.inputs[0], gradient_tex.outputs[0])
-                    links.new(bsdf.inputs["Base Color"], color_ramp.outputs[0])
-                    links.new(
-                        material_output.inputs["Surface"], bsdf.outputs[0]
-                    )
-
-                    # 将材质应用到曲线对象
-                    curve_obj.data.materials.append(material)
-
-                    # # 创建一个渐变纹理节点来控制颜色变化
-                    # gradient_tex = nodes.new(type="ShaderNodeTexCoord")
-                    # gradient_tex.outputs['Object'].default_value = (0, 0, 0)
-
-                    # # 连接渐变纹理节点到颜色渐变节点
-                    # links.new(
-                    #     color_ramp.inputs[0], gradient_tex.outputs['Object']
-                    # )
+            color_match = re.search(
+                r'pigment\s*{\s*color\s*rgb\s*<([^>]*)>', sweep_text
+            )
+            if color_match:
+                color = map(float, color_match.group(1).split(','))
+            else:
+                color = (0, 0, 0)
+            self.set_snake(position_list, radius_list, color)
 
     def render(self):
         bpy.context.scene.camera = bpy.data.objects['Camera']
@@ -641,6 +666,52 @@ class VLNBlenderRenderer:
         bpy.data.images["Render Result"].save_render(
             f"renders/frame_000000.png"
         )
+
+    def render_by_arguments(
+        self,
+        file_name: str,
+        camera_param: CameraArguments,
+        rod_param: RodArguments = None,
+        sphere_params: list[SphereArguments] = None,
+        mesh_params: list[MeshArguments] = None,
+    ):
+        self.set_camera(
+            camera_param.location,
+            camera_param.angle,
+            camera_param.look_at,
+        )
+
+        if sphere_params is None:
+            sphere_params = []
+        if mesh_params is None:
+            mesh_params = []
+
+        for param in sphere_params + mesh_params:
+            self.load_obj(param.shape)
+        bpy.ops.object.select_all(action='SELECT')
+
+        for idx, sphere_param in enumerate(sphere_params):
+            location = sphere_param.position
+            radius = sphere_param.radius
+            obj = bpy.context.selected_objects[idx + 4]
+            self.auto_adjust_spheres_obj_data(obj, location, radius)
+        for idx, mesh_param in enumerate(mesh_params):
+            location = mesh_param.position
+            scale = mesh_param.scale
+            obj = bpy.context.selected_objects[4 + len(sphere_params) + idx]
+            self.auto_adjust_mesh_obj_data(obj, location, scale)
+
+        if rod_param is not None:
+            self.set_snake(
+                rod_param.positions, rod_param.radius, rod_param.color
+            )
+
+        bpy.context.scene.frame_set(0)
+        bpy.ops.render.render(write_still=False)
+        render_result = bpy.data.images["Render Result"]
+
+        output_file = os.path.join(self.output_dir, file_name)
+        render_result.save_render(output_file)
 
 
 class VLMBlenderRenderer:
