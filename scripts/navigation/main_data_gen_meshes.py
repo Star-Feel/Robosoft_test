@@ -2,7 +2,7 @@ import copy
 import os
 import os.path as osp
 from dataclasses import dataclass
-from typing import TypedDict
+from typing import Optional, Sequence, TypedDict
 
 import numpy as np
 import trimesh
@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 from configs import FULL_DIR, NUM_DATA, meshes_config
 from ssim.utils import load_json, load_yaml, save_json, save_yaml
+from templates import MESH_TEMP, SPHERE_TEMP
 
 
 class ASSET(TypedDict):
@@ -17,26 +18,22 @@ class ASSET(TypedDict):
     bbox: list
 
 
-MESH_TEMP = {
-    "type": "mesh_surface",
-    "mesh_path": "",
-    "scale": [],
-    "center": [],
-    "shape": "",
-}
-
-SPHERE_TEMP = {
-    "type": "sphere",
-    "density": "",
-    "center": [],
-    "shape": "",
-}
-
-
 @dataclass
 class MeshesConfig:
     base_assets_dir: str
     blend_assets_dir: str
+
+
+shape2name = {
+    "Obj": "football",
+    "BasketBall": "basketball",
+    "pillows_obj": "gray pillow",
+    "Book_by_Peter_Iliev_obj": "red book",
+    "Coffee_cup_withe_": "white coffee cup",
+    "Tea_Cup": "tea cup",
+    "conbyfr": "conbyfr",
+    "conbyfr2": "conbyfr2",
+}
 
 
 def get_assets_with_bounding_boxes(assets_dir: str, asserts_type: str = "stl"):
@@ -85,13 +82,63 @@ def get_random_mesh(
 def get_random_sphere(assets: dict[ASSET],
                       name: str = None) -> tuple[str, str, float]:
     name_list = list(["Obj", "BasketBall"])
-    if name:
+    if name is not None:
         name_list.remove(name)
 
     sphere_name = np.random.choice(name_list)
     sphere_path = assets[sphere_name]["path"]
     sphere_span = max([y - x for x, y in zip(*assets[sphere_name]["bbox"])])
     return str(sphere_name), sphere_path, sphere_span
+
+
+def get_sphere_mesh_data(
+    base_assets: dict[ASSET],
+    blend_assets: dict[ASSET],
+    base_sphere: dict | Sequence,
+    sphere_probability: float = 0.5,
+    exclude_asset: Optional[str] = None,
+):
+    if isinstance(base_sphere, Sequence):
+        x, y, z, radius = base_sphere
+        base_sphere = SPHERE_TEMP.copy()
+        base_sphere["center"] = [x, y, z]
+        base_sphere["radius"] = radius
+
+    if np.random.rand() < sphere_probability:
+        sphere_target_name, _, _ = get_random_sphere(
+            blend_assets, exclude_asset
+        )
+        object_dict = copy.deepcopy(SPHERE_TEMP)
+        object_dict["shape"] = sphere_target_name
+        object_dict["density"] = base_sphere['density']
+        object_dict["center"] = base_sphere['center']
+        object_dict["radius"] = base_sphere['radius']
+    else:
+        center = base_sphere["center"]
+        radius = base_sphere["radius"]
+
+        (
+            mesh_target_name,
+            mesh_target_path,
+            mesh_target_span,
+        ) = get_random_mesh(base_assets)
+        blend_mesh_target_name, _, _ = get_random_mesh(
+            blend_assets,
+            exclude_asset,
+            mesh_target_name,
+        )
+        object_dict = copy.deepcopy(MESH_TEMP)
+        object_dict["mesh_path"] = mesh_target_path
+        object_dict["shape"] = blend_mesh_target_name
+
+        max_mesh_span = float(np.linalg.norm(mesh_target_span))
+
+        scale = round(2 * radius / max_mesh_span, 3)
+        mesh_y_height = mesh_target_span[1] * scale
+        center[1] = 0.95 * mesh_y_height / 2  # 低一点，保证不会从底下钻过去
+        object_dict["center"] = center
+        object_dict["scale"] = [scale] * 3
+    return object_dict
 
 
 def main():
@@ -115,113 +162,32 @@ def main():
         info = load_json(osp.join(FULL_DIR, f"{i}", "info.json"))
         target_id = info["target_id"]
 
-        sphere_target_name = None
-        blend_mesh_target_name = None
-
-        # 确定target信息
-        if np.random.rand() < 1 / 2:
-            sphere_target_name, _, _ = get_random_sphere(assets)
-            sphere_target_dict = copy.deepcopy(SPHERE_TEMP)
-            sphere_target_dict["shape"] = sphere_target_name
-            sphere_target_dict["density"] = spheres[target_id]['density']
-            sphere_target_dict["center"] = spheres[target_id]['center']
-            sphere_target_dict["radius"] = spheres[target_id]['radius']
-            spheres[target_id] = sphere_target_dict
-
-        else:
-            center = spheres[target_id]["center"]
-            radius = spheres[target_id]["radius"]
-
-            (
-                mesh_target_name,
-                mesh_target_path,
-                mesh_target_span,
-            ) = get_random_mesh(base_assets)
-            blend_mesh_target_name, _, _ = get_random_mesh(
-                assets, base_mesh_name=mesh_target_name
-            )
-            mesh_target_dict = copy.deepcopy(MESH_TEMP)
-            mesh_target_dict["mesh_path"] = mesh_target_path
-            mesh_target_dict["shape"] = blend_mesh_target_name
-
-            if mesh_target_name == 'cube':
-                max_mesh_span = float(np.linalg.norm(mesh_target_span))
-            else:
-                max_mesh_span = float(max(mesh_target_span))
-
-            scale = round(2 * radius / max_mesh_span, 3)
-            mesh_y_height = mesh_target_span[1] * scale
-            center[1] = 0.95 * mesh_y_height / 2  # 低一点，保证不会从底下钻过去
-            mesh_target_dict["center"] = center
-            mesh_target_dict["scale"] = [scale] * 3
-            spheres[target_id] = mesh_target_dict
+        target_dict = get_sphere_mesh_data(
+            base_assets,
+            assets,
+            spheres[target_id],
+            sphere_probability=1 / 2,
+            exclude_asset=None
+        )
 
         # 确定除target外的物体信息
         for j in range(len(spheres) - 1):
             if j == target_id:
                 continue
             sphere = spheres[j]
-            if np.random.rand() < 1 / 3:
+            obstacle_dict = get_sphere_mesh_data(
+                base_assets,
+                assets,
+                sphere,
+                sphere_probability=1 / 3,
+                exclude_asset=target_dict["shape"]
+            )
 
-                sphere_name, _, _ = get_random_sphere(
-                    assets, sphere_target_name
-                )
-                sphere_dict = copy.deepcopy(SPHERE_TEMP)
-                sphere_dict["shape"] = sphere_name
-                sphere_dict["density"] = sphere['density']
-                sphere_dict["center"] = sphere['center']
-                sphere_dict["radius"] = sphere['radius']
-                spheres[j] = sphere_dict
-
-                del sphere_dict
-
-            else:
-                center = sphere["center"]
-                radius = sphere["radius"]
-
-                mesh_name, mesh_path, mesh_span = get_random_mesh(base_assets)
-                blend_mesh_name, _, _ = get_random_mesh(
-                    assets, blend_mesh_target_name, mesh_name
-                )
-                mesh_dict = copy.deepcopy(MESH_TEMP)
-                mesh_dict["mesh_path"] = mesh_path
-                mesh_dict["shape"] = blend_mesh_name
-
-                if mesh_name == 'cube':
-                    max_mesh_span = float(np.linalg.norm(mesh_target_span))
-                else:
-                    max_mesh_span = float(max(mesh_target_span))
-
-                scale = round(2 * radius / max_mesh_span, 3)
-                mesh_y_height = mesh_span[1] * scale
-                center[1] = 0.95 * mesh_y_height / 2  # 低一点，保证不会从底下钻过去
-                mesh_dict["center"] = center
-                mesh_dict["scale"] = [scale] * 3
-
-                spheres[j] = mesh_dict
-
-                del mesh_dict
+            spheres[j] = obstacle_dict
 
         # 处理文本
-        target_mesh = mesh_target_dict["shape"]
-        target_name = ""
-        match target_mesh:
-            case "Obj":
-                target_name = "football"
-            case "BasketBall":
-                target_name = "basketball"
-            case "pillows_obj":
-                target_name = "gray pillow"
-            case "Book_by_Peter_Iliev_obj":
-                target_name = "red book"
-            case "Coffee_cup_withe_":
-                target_name = "white coffee cup"
-            case "Tea_Cup":
-                target_name = "tea cup"
-            case "conbyfr":
-                target_name = "conbyfr"
-            case "conbyfr2":
-                target_name = "conbyfr2"
+        target_mesh = target_dict["shape"]
+        target_name = shape2name.get(target_mesh, target_mesh)
 
         info = load_json(osp.join(local_full_dir, "info.json"))
         info["description"] = info["description"].replace(

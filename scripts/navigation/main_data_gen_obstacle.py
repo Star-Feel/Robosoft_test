@@ -45,8 +45,10 @@ def check_collision_with_spheres(sphere: tuple, spheres: list) -> bool:
 
 
 def gen_obstacles(
-    positions: np.array,
-    num_obstacles: int = 10,
+    positions: np.array = None,
+    x_range: tuple = None,
+    z_range: tuple = None,
+    num_obstacles: int | tuple[int] = 10,
     num_policy: str = "random",
     margin: float = 0.5,
     radius_range: tuple = (0, 1),
@@ -57,18 +59,38 @@ def gen_obstacles(
     if pre_obsticles is None:
         pre_obsticles = []
     if num_policy == "random":
-        num_obstacles = np.random.randint(1, num_obstacles + 1)
-    minx, maxx = positions[:, 0].min() - margin, positions[:, 0].max() + margin
-    minz, maxz = positions[:, 2].min() - margin, positions[:, 2].max() + margin
+        num_range = num_obstacles if isinstance(num_obstacles, tuple
+                                                ) else (1, num_obstacles + 1)
+        num_obstacles = np.random.randint(num_range[0], num_range[1])
+
+    if x_range is None:
+        minx, maxx = (
+            positions[:, 0].min() - margin,
+            positions[:, 0].max() + margin,
+        )
+    else:
+        minx, maxx = x_range
+    if z_range is None:
+        minz, maxz = (
+            positions[:, 2].min() - margin,
+            positions[:, 2].max() + margin,
+        )
+    else:
+        minz, maxz = z_range
+
     obstacles = []
     for _ in range(num_obstacles):
         while True:
             obstacle = get_random_sphere(
                 minx, maxx, radius_range[0], radius_range[1], minz, maxz
             )
-            position_collision, distance = check_collision_with_positions(
-                obstacle, positions
-            )
+            if positions is not None:
+                position_collision, distance = check_collision_with_positions(
+                    obstacle, positions
+                )
+            else:
+                position_collision = False
+                distance = 0
             pre_obsticle_collision = check_collision_with_spheres(
                 obstacle, pre_obsticles
             )
@@ -139,15 +161,15 @@ def main():
                 "density": 100.0,
             }
             spheres.append(sphere)
-        base_config["objects"] = spheres
-        save_yaml(base_config, osp.join(load_target_dir, "config.yaml"))
+            base_config["objects"] = spheres
+            save_yaml(base_config, osp.join(load_target_dir, "config.yaml"))
 
-        # visualize
-        plot_contour_with_spheres(
-            positions=positions.transpose(0, 2, 1)[..., [0, 2]],
-            spheres=obstacles,
-            save_path=osp.join(load_target_dir, "contour.png"),
-        )
+            # visualize
+            plot_contour_with_spheres(
+                positions=positions.transpose(0, 2, 1)[..., [0, 2]],
+                spheres=obstacles,
+                save_path=osp.join(load_target_dir, "contour.png"),
+            )
 
 
 if __name__ == "__main__":
