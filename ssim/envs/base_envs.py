@@ -280,7 +280,7 @@ class ObjectsMixin(RigidMixin):
                     center=object_config.center,
                     radius=object_config.radius,
                     density=object_config.density,
-                    theta=object_config.theta,
+                    theta=object_config.direction,
                 )
             elif isinstance(object_config, MeshSurfaceArguments):
                 self.add_mesh_surface(
