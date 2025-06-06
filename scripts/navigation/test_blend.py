@@ -1,21 +1,8 @@
-import copy
-import os
-import os.path as osp
 from dataclasses import dataclass
 
 import bpy
 import numpy as np
-import tqdm
-from main_data_gen_full import desciprtions
-from main_data_gen_meshes import (
-    get_assets_with_bounding_boxes,
-    get_sphere_mesh_data,
-    shape2name,
-)
-from main_data_gen_obstacle import gen_obstacles
 
-from configs import EVAL_DIR, eval_data_config
-from ssim.utils import load_yaml, save_json, save_yaml
 from ssim.visualize.pov2blend import (
     CameraArguments,
     MeshArguments,
