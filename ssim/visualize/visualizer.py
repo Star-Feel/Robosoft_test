@@ -9,13 +9,13 @@ import elastica as ea
 
 
 def plot_video(
-        plot_params: dict,
-        sphere_params: dict,
-        sphere,
-        video_name="video.mp4",
-        fps=15,
-        xlim=(0, 4),
-        ylim=(-1, 1),
+    plot_params: dict,
+    sphere_params: dict,
+    sphere,
+    video_name="video.mp4",
+    fps=15,
+    xlim=(0, 4),
+    ylim=(-1, 1),
 ):  # (time step, x/y/z, node)
 
     positions_over_time = np.array(plot_params["position"])
@@ -23,9 +23,9 @@ def plot_video(
 
     print("plot video")
     FFMpegWriter = animation.writers["ffmpeg"]
-    metadata = dict(title="Movie Test",
-                    artist="Matplotlib",
-                    comment="Movie support!")
+    metadata = dict(
+        title="Movie Test", artist="Matplotlib", comment="Movie support!"
+    )
     writer = FFMpegWriter(fps=fps, metadata=metadata)
     fig = plt.figure(figsize=(10, 8), frameon=True, dpi=150)
     ax = fig.add_subplot(111)
@@ -33,8 +33,9 @@ def plot_video(
     ax.set_ylim(*ylim)
     ax.set_xlabel("z [m]", fontsize=16)
     ax.set_ylabel("x [m]", fontsize=16)
-    rod_lines_2d = ax.plot(positions_over_time[0][2],
-                           positions_over_time[0][0])[0]
+    rod_lines_2d = ax.plot(
+        positions_over_time[0][2], positions_over_time[0][0]
+    )[0]
 
     # 初始化一个变量来保存当前的圆形对象
     current_circle = None
@@ -178,12 +179,13 @@ def plot_video(
 
 
 def create_3d_animation(
-        position_rod: np.ndarray,
-        position_sphere: np.ndarray,  # 新增球体位置参数 (time_steps, 3)
-        sphere_radius: float,  # 新增球体半径参数
-        save_path=None,
-        fps=30,
-        skip=1):
+    position_rod: np.ndarray,
+    position_sphere: np.ndarray,  # 新增球体位置参数 (time_steps, 3)
+    sphere_radius: float,  # 新增球体半径参数
+    save_path=None,
+    fps=30,
+    skip=1
+):
     """
     Create and save a 3D animation of the rod motion with sphere
 
@@ -203,12 +205,12 @@ def create_3d_animation(
     all_positions = np.concatenate([position_rod, position_sphere], axis=-1)
 
     # 计算统一的坐标范围
-    x_min, x_max = np.min(all_positions[:, 0, :]), np.max(all_positions[:,
-                                                                        0, :])
-    y_min, y_max = np.min(all_positions[:, 1, :]), np.max(all_positions[:,
-                                                                        1, :])
-    z_min, z_max = np.min(all_positions[:, 2, :]), np.max(all_positions[:,
-                                                                        2, :])
+    x_min, x_max = np.min(all_positions[:,
+                                        0, :]), np.max(all_positions[:, 0, :])
+    y_min, y_max = np.min(all_positions[:,
+                                        1, :]), np.max(all_positions[:, 1, :])
+    z_min, z_max = np.min(all_positions[:,
+                                        2, :]), np.max(all_positions[:, 2, :])
 
     margin = 0.1
     x_range = x_max - x_min
@@ -267,36 +269,37 @@ def create_3d_animation(
         # sphere_surface._verts3d = (x + cx[0], y + cy[0], z + cz[0])
         global sphere_surface
         sphere_surface.remove()  # 删除旧对象
-        sphere_surface = ax.plot_surface(x_new,
-                                         y_new,
-                                         z_new,
-                                         color='b',
-                                         alpha=0.6)
+        sphere_surface = ax.plot_surface(
+            x_new, y_new, z_new, color='b', alpha=0.6
+        )
         # 更新时间显示
         time_text.set_text(time_template % (frame / fps))
 
         return line, sphere_surface, time_text
 
-    progress_callback = tqdm(total=num_frames // skip,
-                             desc="Generating frames")
+    progress_callback = tqdm(
+        total=num_frames // skip, desc="Generating frames"
+    )
 
     def update_with_progress(frame):
         result = update(frame)
         progress_callback.update(1)
         return result
 
-    anim = animation.FuncAnimation(fig,
-                                   update_with_progress,
-                                   frames=range(0, num_frames, skip),
-                                   init_func=init,
-                                   blit=True,
-                                   interval=1000 / fps)
+    anim = animation.FuncAnimation(
+        fig,
+        update_with_progress,
+        frames=range(0, num_frames, skip),
+        init_func=init,
+        blit=True,
+        interval=1000 / fps
+    )
 
     # 保存视频
     if save_path:
-        writer = animation.FFMpegWriter(fps=fps,
-                                        metadata={'artist': 'DeepSeek'},
-                                        bitrate=5000)
+        writer = animation.FFMpegWriter(
+            fps=fps, metadata={'artist': 'DeepSeek'}, bitrate=5000
+        )
         anim.save(save_path, writer=writer)
 
     plt.close()
@@ -333,12 +336,12 @@ def rod_objects_3d_visualize(
     all_positions = np.concatenate([position_rod, *position_objects], axis=-1)
 
     # 计算统一的坐标范围
-    x_min, x_max = np.min(all_positions[:, 0, :]), np.max(all_positions[:,
-                                                                        0, :])
-    y_min, y_max = np.min(all_positions[:, 1, :]), np.max(all_positions[:,
-                                                                        1, :])
-    z_min, z_max = np.min(all_positions[:, 2, :]), np.max(all_positions[:,
-                                                                        2, :])
+    x_min, x_max = np.min(all_positions[:,
+                                        0, :]), np.max(all_positions[:, 0, :])
+    y_min, y_max = np.min(all_positions[:,
+                                        1, :]), np.max(all_positions[:, 1, :])
+    z_min, z_max = np.min(all_positions[:,
+                                        2, :]), np.max(all_positions[:, 2, :])
 
     margin = 0.1
     x_range = x_max - x_min
@@ -409,11 +412,9 @@ def rod_objects_3d_visualize(
                 x_new = x + cx
                 y_new = y + cy
                 z_new = z + cz
-                sphere_surface = ax.plot_surface(x_new,
-                                                 y_new,
-                                                 z_new,
-                                                 color='b',
-                                                 alpha=0.6)
+                sphere_surface = ax.plot_surface(
+                    x_new, y_new, z_new, color='b', alpha=0.6
+                )
                 objects_plot.append(sphere_surface)
 
         # 更新时间显示
@@ -421,26 +422,29 @@ def rod_objects_3d_visualize(
 
         return line, time_text
 
-    progress_callback = tqdm(total=num_frames // skip,
-                             desc="Generating frames")
+    progress_callback = tqdm(
+        total=num_frames // skip, desc="Generating frames"
+    )
 
     def update_with_progress(frame):
         result = update(frame)
         progress_callback.update(1)
         return result
 
-    anim = animation.FuncAnimation(fig,
-                                   update_with_progress,
-                                   frames=range(0, num_frames, skip),
-                                   init_func=init,
-                                   blit=True,
-                                   interval=1000 / fps)
+    anim = animation.FuncAnimation(
+        fig,
+        update_with_progress,
+        frames=range(0, num_frames, skip),
+        init_func=init,
+        blit=True,
+        interval=1000 / fps
+    )
 
     # 保存视频
     if save_path:
-        writer = animation.FFMpegWriter(fps=fps,
-                                        metadata={'artist': 'DeepSeek'},
-                                        bitrate=5000)
+        writer = animation.FFMpegWriter(
+            fps=fps, metadata={'artist': 'DeepSeek'}, bitrate=5000
+        )
         anim.save(save_path, writer=writer)
 
     plt.close()
@@ -483,6 +487,72 @@ def plot_contour(
 
     if save_path:
         plt.savefig(save_path, dpi=300)
+
+
+def plot_contour_3d(
+    positions: np.ndarray,
+    xlim=None,
+    ylim=None,
+    zlim=None,
+    view_angle=(30, 30),
+    save_path=None,
+    figsize=(10, 8),
+):
+    """
+    Plot a 3D trajectory based on positions.
+
+    Args:
+        positions: 3D coordinates of shape (time_steps, n_points, 3).
+        xlim: Tuple specifying x-axis limits (optional).
+        ylim: Tuple specifying y-axis limits (optional).
+        zlim: Tuple specifying z-axis limits (optional).
+        view_angle: Tuple (elevation, azimuth) for the viewing angle (optional).
+        save_path: Path to save the figure (optional).
+        figsize: Figure size as (width, height) in inches (optional).
+    """
+    # Extract x, y and z coordinates
+    x = positions[:, :, 0]
+    y = positions[:, :, 1]
+    z = positions[:, :, 2]
+
+    # Create a 3D figure
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Plot the positions as 3D trajectories
+    for i in range(x.shape[1]):
+        ax.plot(x[:, i], y[:, i], z[:, i], label=f"Point {i + 1}")
+
+    # Set labels
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    ax.set_title("3D Trajectory Plot")
+
+    # Set view angle
+    ax.view_init(elev=view_angle[0], azim=view_angle[1])
+
+    # Set axis limits if provided
+    if xlim:
+        ax.set_xlim(xlim)
+    if ylim:
+        ax.set_ylim(ylim)
+    if zlim:
+        ax.set_zlim(zlim)
+
+    # Add a legend if there are multiple points
+    if x.shape[1] > 1:
+        ax.legend()
+
+    # Improve the aspect ratio
+    ax.set_box_aspect([1, 1, 1])
+
+    # Add grid for better visibility
+    ax.grid(True)
+
+    # Save the figure if a path is provided
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
 
 
 def plot_contour_with_spheres(
@@ -530,3 +600,106 @@ def plot_contour_with_spheres(
         plt.close()
     else:
         plt.show()
+
+
+def plot_contour_with_spheres_3d(
+    positions: np.ndarray,
+    spheres: list,
+    xlim=None,
+    ylim=None,
+    zlim=None,
+    view_angle=(30, 30),
+    sphere_alpha=0.3,
+    sphere_color='royalblue',
+    sphere_resolution=20,
+    save_path=None,
+    figsize=(10, 8),
+):
+    """
+    Plot a 3D trajectory based on positions and overlay spheres.
+
+    Args:
+        positions: 3D coordinates of shape (time_steps, n_points, 3).
+        spheres: List of spheres, each defined as (x, y, z, r).
+        xlim: Tuple specifying x-axis limits (optional).
+        ylim: Tuple specifying y-axis limits (optional).
+        zlim: Tuple specifying z-axis limits (optional).
+        view_angle: Tuple (elevation, azimuth) for the viewing angle (optional).
+        sphere_alpha: Transparency of spheres (0-1).
+        sphere_color: Color of the spheres.
+        sphere_resolution: Resolution of the sphere meshes.
+        save_path: Path to save the figure (optional).
+        figsize: Figure size as (width, height) in inches (optional).
+    """
+    # Extract x, y and z coordinates
+    x = positions[:, :, 0]
+    y = positions[:, :, 1]
+    z = positions[:, :, 2]
+
+    # Create a 3D figure
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Plot the positions as 3D trajectories
+    for i in range(x.shape[1]):
+        ax.plot(x[:, i], y[:, i], z[:, i], label=f"Point {i + 1}")
+
+    # Add spheres
+    for sphere in spheres:
+        center_x, center_y, center_z, radius = sphere
+
+        # Create a sphere
+        u = np.linspace(0, 2 * np.pi, sphere_resolution)
+        v = np.linspace(0, np.pi, sphere_resolution)
+
+        sphere_x = center_x + radius * np.outer(np.cos(u), np.sin(v))
+        sphere_y = center_y + radius * np.outer(np.sin(u), np.sin(v))
+        sphere_z = center_z + radius * np.outer(np.ones(np.size(u)), np.cos(v))
+
+        # Plot the sphere
+        ax.plot_surface(
+            sphere_x,
+            sphere_y,
+            sphere_z,
+            color=sphere_color,
+            alpha=sphere_alpha,
+            linewidth=0,
+            antialiased=True
+        )
+
+    # Set labels
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    ax.set_title("3D Trajectory with Spheres")
+
+    # Set view angle
+    ax.view_init(elev=view_angle[0], azim=view_angle[1])
+
+    # Set axis limits if provided
+    if xlim:
+        ax.set_xlim(xlim)
+    if ylim:
+        ax.set_ylim(ylim)
+    if zlim:
+        ax.set_zlim(zlim)
+
+    # Add a legend if there are multiple points
+    if x.shape[1] > 1:
+        ax.legend()
+
+    # Improve the aspect ratio
+    ax.set_box_aspect([1, 1, 1])
+
+    # Add grid for better visibility
+    ax.grid(True)
+
+    # Save the figure if a path is provided
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.tight_layout()
+        plt.show()
+
+    return fig, ax

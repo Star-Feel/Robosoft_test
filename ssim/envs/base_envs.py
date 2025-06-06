@@ -280,6 +280,7 @@ class ObjectsMixin(RigidMixin):
                     center=object_config.center,
                     radius=object_config.radius,
                     density=object_config.density,
+                    theta=object_config.theta,
                 )
             elif isinstance(object_config, MeshSurfaceArguments):
                 self.add_mesh_surface(
@@ -309,146 +310,6 @@ class ObjectsMixin(RigidMixin):
                     callback_params=self.object_callbacks[
                         self.object2id[object_]]
                 )
-
-
-class VLMBlenderMixin:
-    pass
-
-
-class VLMBlender:
-
-    def visualize_3d_blender(
-        self,
-        video_name,
-        output_images_dir,
-        fps,
-        width=960,
-        height=540,
-        target_id=0,
-    ):
-        top_view_dir = os.path.join(output_images_dir, "top")
-        blender_renderer = VLNBlenderRenderer(top_view_dir)
-
-        renderer = POVRayRenderer(
-            output_filename=video_name,
-            output_images_dir=output_images_dir,
-            fps=fps,
-            width=width,
-            height=height,
-        )
-
-        frames = len(self.rod_callback['time'])
-        for i in tqdm(range(frames), disable=False, desc="Rendering .povray"):
-            renderer.reset_stage(
-                top_camera_position=[1, 4, -4], top_camera_look_at=[1, 0, 0]
-            )
-            for object_ in self.objects:
-                id_ = self.object2id[object_]
-                object_callback = self.object_callbacks[id_]
-                object_name = "target_object" if id_ == target_id else "obstacle_object"
-                if isinstance(object_, ea.Sphere):
-                    renderer.add_stage_object(
-                        object_type='sphere',
-                        name=f'sphere{id_}',
-                        shape=str(self.object_configs[id_].shape),
-                        object_name=object_name,
-                        position=np.squeeze(object_callback['position'][i]),
-                        radius=np.squeeze(object_callback['radius'][i]),
-                    )
-                elif isinstance(object_, MeshSurface):
-                    scale = np.linalg.norm(object_.mesh_scale)
-                    renderer.add_stage_object(
-                        object_type='mesh',
-                        name=f'mesh{id_}',
-                        shape=str(self.object_configs[id_].shape),
-                        object_name=object_name,
-                        position=np.squeeze(object_callback['position'][i]),
-                        scale=scale,
-                        matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
-                    )
-            renderer.add_stage_object(
-                object_type='mesh',
-                name=f'mesh{len(self.objects)}',
-                shape="truncated_cone_base",
-                object_name="rod_component",
-                position=np.squeeze(self.rod_callback['position'][i][:, 0]),
-                scale=0.3,
-                matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
-            )
-            renderer.render_single_step(
-                data={
-                    "rod_position": self.rod_callback["position"][i],
-                    "rod_radius": self.rod_callback["radius"][i],
-                },
-                save_script_file=True,
-                save_img=False,
-            )
-
-        blender_renderer.batch_rendering(top_view_dir, top_view_dir)
-        renderer.create_video(only_top=True)
-
-    def single_step_3d_blend(
-        self,
-        output_images_dir,
-        fps,
-        width=960,
-        height=540,
-        current_step=0,
-        interval=0,
-        target_id=0,
-        save_img: bool = False,
-    ):
-        if current_step % interval == 0:
-            top_view_dir = os.path.join(output_images_dir, "top")
-            blender_renderer = VLNBlenderRenderer(top_view_dir)
-
-            renderer = POVRayRenderer(
-                output_images_dir=output_images_dir,
-                fps=fps,
-                width=width,
-                height=height,
-            )
-
-            renderer.reset_stage(
-                top_camera_position=[2, 7, 1], top_camera_look_at=[0, 0, 1]
-            )
-            for object_ in self.objects:
-                id_ = self.object2id[object_]
-                object_callback = self.object_callbacks[id_]
-                if isinstance(object_, ea.Sphere):
-                    renderer.add_stage_object(
-                        object_type='sphere',
-                        name=f'sphere{id_}',
-                        shape=str(self.object_configs[id_].shape),
-                        position=np.squeeze(object_callback['position'][0]),
-                        radius=np.squeeze(object_callback['radius'][0]),
-                    )
-                elif isinstance(object_, MeshSurface):
-                    scale = np.linalg.norm(object_.mesh_scale)
-                    renderer.add_stage_object(
-                        object_type='mesh',
-                        name=f'mesh{id_}',
-                        shape=str(self.object_configs[id_].shape),
-                        mesh_name='cube_mesh',
-                        position=np.squeeze(object_callback['position'][0]),
-                        scale=scale,  # TODO
-                        matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
-                    )
-
-            pov_scripts = renderer.render_single_step(
-                data={
-                    "rod_position": self.shearable_rod.position_collection,
-                    "rod_radius": self.shearable_rod.radius,
-                },
-                save_img=False,
-            )
-
-            rendered_image = blender_renderer.single_step_rendering(
-                current_step,
-                pov_scripts["top"],
-                top_view_dir,
-                save_img,
-            )
 
 
 class RodSphereEnvironment(RodMixin, RigidMixin, SimulatedEnvironment):
@@ -503,7 +364,7 @@ class FetchableRodObjectsEnvironment(
         center: np.ndarray,
         radius: float,
         density: float,
-        theta: np.ndarray = [0., 0., 0.],
+        theta: np.ndarray = np.array([0., 0., 0.]),
     ) -> ea.Sphere:
         """
         Add a sphere to the environment.

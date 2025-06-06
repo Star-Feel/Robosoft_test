@@ -3,11 +3,12 @@ __all__ = [
     "ControllableGrabEnvironment",
 ]
 
+import os
 import copy
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Sequence
-
+from tqdm import tqdm
 import elastica as ea
 import numpy as np
 from elastica import OneEndFixedRod, RigidBodyBase
@@ -28,6 +29,7 @@ from ..components import (
 )
 from ..components.contact import surface_grid_xyz
 from ..components.surface.mesh_surface import MeshSurface
+import warnings
 from ..utils import (
     compute_quaternion_from_matrix,
     compute_rotation_matrix,
@@ -38,6 +40,9 @@ from .base_envs import (
     RodControlMixin,
     SimulatedEnvironment,
 )
+from ..visualize.renderer import POVRayRenderer
+
+from ..visualize.pov2blend import VLMBlenderRenderer, VLNBlenderRenderer
 
 
 @dataclass
@@ -49,8 +54,152 @@ class ControllableGrabArguments(SuperArguments):
     controller: RodControllerArgumets = None
 
 
+class VLMBlender:
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.blender_objects = []
+        self.blender_object2id = {}
+        self.blender_object_callbacks = []
+
+    def visualize_3d_blender(
+        self,
+        video_name,
+        output_images_dir,
+        fps,
+        width=960,
+        height=540,
+        target_id=0,
+    ):
+        top_view_dir = os.path.join(output_images_dir, "top")
+        blender_renderer = VLMBlenderRenderer(top_view_dir)
+
+        renderer = POVRayRenderer(
+            output_filename=video_name,
+            output_images_dir=output_images_dir,
+            fps=fps,
+            width=width,
+            height=height,
+        )
+
+        frames = len(self.rod_callback['time'])
+        for i in tqdm(range(frames), disable=False, desc="Rendering .povray"):
+            renderer.reset_stage(
+                top_camera_position=[1, 4, -4], top_camera_look_at=[1, 0, 0]
+            )
+            for object_ in self.objects:
+                id_ = self.object2id[object_]
+                object_callback = self.object_callbacks[id_]
+                object_name = "target_object" if id_ == target_id else "obstacle_object"
+                if isinstance(object_, ea.Sphere):
+                    renderer.add_stage_object(
+                        object_type='sphere',
+                        name=f'sphere{id_}',
+                        shape=str(self.object_configs[id_].shape),
+                        object_name=object_name,
+                        position=np.squeeze(object_callback['position'][i]),
+                        radius=np.squeeze(object_callback['radius'][i]),
+                    )
+                elif isinstance(object_, MeshSurface):
+                    scale = np.linalg.norm(object_.mesh_scale)
+                    renderer.add_stage_object(
+                        object_type='mesh',
+                        name=f'mesh{id_}',
+                        shape=str(self.object_configs[id_].shape),
+                        object_name=object_name,
+                        position=np.squeeze(object_callback['position'][i]),
+                        scale=scale,
+                        matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
+                    )
+            renderer.add_stage_object(
+                object_type='mesh',
+                name=f'mesh{len(self.objects)}',
+                shape="truncated_cone_base",
+                object_name="rod_component",
+                position=np.squeeze(self.rod_callback['position'][i][:, 0]),
+                scale=0.3,
+                matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
+            )
+            renderer.render_single_step(
+                data={
+                    "rod_position": self.rod_callback["position"][i],
+                    "rod_radius": self.rod_callback["radius"][i],
+                },
+                save_script_file=True,
+                save_img=False,
+            )
+
+        blender_renderer.batch_rendering(top_view_dir, top_view_dir)
+        renderer.create_video(only_top=True)
+
+    def single_step_3d_blend(
+        self,
+        output_images_dir,
+        fps,
+        width=960,
+        height=540,
+        current_step=0,
+        interval=0,
+        target_id=0,
+        save_img: bool = False,
+    ):
+        if current_step % interval == 0:
+            top_view_dir = os.path.join(output_images_dir, "top")
+            blender_renderer = VLNBlenderRenderer(top_view_dir)
+
+            renderer = POVRayRenderer(
+                output_images_dir=output_images_dir,
+                fps=fps,
+                width=width,
+                height=height,
+            )
+
+            renderer.reset_stage(
+                top_camera_position=[2, 7, 1], top_camera_look_at=[0, 0, 1]
+            )
+            for object_ in self.objects:
+                id_ = self.object2id[object_]
+                object_callback = self.object_callbacks[id_]
+                if isinstance(object_, ea.Sphere):
+                    renderer.add_stage_object(
+                        object_type='sphere',
+                        name=f'sphere{id_}',
+                        shape=str(self.object_configs[id_].shape),
+                        position=np.squeeze(object_callback['position'][0]),
+                        radius=np.squeeze(object_callback['radius'][0]),
+                    )
+                elif isinstance(object_, MeshSurface):
+                    scale = np.linalg.norm(object_.mesh_scale)
+                    renderer.add_stage_object(
+                        object_type='mesh',
+                        name=f'mesh{id_}',
+                        shape=str(self.object_configs[id_].shape),
+                        mesh_name='cube_mesh',
+                        position=np.squeeze(object_callback['position'][0]),
+                        scale=scale,  # TODO
+                        matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1],
+                    )
+
+            pov_scripts = renderer.render_single_step(
+                data={
+                    "rod_position": self.shearable_rod.position_collection,
+                    "rod_radius": self.shearable_rod.radius,
+                },
+                save_img=False,
+            )
+
+            rendered_image = blender_renderer.single_step_rendering(
+                current_step,
+                pov_scripts["top"],
+                top_view_dir,
+                save_img,
+            )
+
+
 class ControllableGrabEnvironment(
-    FetchableRodObjectsEnvironment, RodControlMixin, SimulatedEnvironment
+    VLMBlender,
+    FetchableRodObjectsEnvironment,
+    RodControlMixin,
 ):
 
     def __init__(self, configs: ControllableGrabArguments):
@@ -122,7 +271,6 @@ class ControllableGrabEnvironment(
                     center=object_config.center,
                     radius=object_config.radius,
                     density=object_config.density,
-                    theta=None,
                 )
             elif isinstance(object_config, MeshSurfaceArguments):
                 self.add_mesh_surface(
@@ -251,7 +399,26 @@ class ControllableGrabEnvironment(
 
         # state = self.get_state()
 
-    def set_target(self, target_point, target_angle):
+    def set_target_object(self, object_id: int):
+        self.target_object = self.objects[object_id]
+
+    def is_rod_achieve_object_by_geometry(
+        self, eps: float = 0.02, info=False
+    ) -> bool:
+
+        distance = np.linalg.norm(
+            self.shearable_rod.position_collection[:, -1]
+            - self.target_object.center
+        )
+        if info:
+            print(distance)
+        return distance < eps
+
+    def is_rod_achieve_object_by_feedback(self):
+        object_id = self.object2id[self.target_object]
+        return self.attach_flags[object_id]
+
+    def set_target_point(self, target_point, target_angle=np.array([0, 0, 0])):
         """
         Set target point and angle for the rod.
 
@@ -267,6 +434,44 @@ class ControllableGrabEnvironment(
         self.target_angle = target_angle
 
         return self.get_state()
+
+    def is_rod_achieve_target(self, eps: float = 0.02, info=False) -> bool:
+        """
+        Check if the rod has reached the target point.
+
+        Parameters
+        ----------
+        eps : float
+            Tolerance for checking if the rod has reached the target point.
+        info : bool
+            If True, print additional information.
+
+        Returns
+        -------
+        bool
+            True if the rod has reached the target point, False otherwise.
+        """
+
+        distance = np.linalg.norm(
+            self.shearable_rod.position_collection[..., -1] - self.target_point
+        )
+        if info:
+            print(distance)
+        return distance < eps
+
+    def is_object_achieve_target(self, eps: float = 0.02, info=False) -> bool:
+        if isinstance(self.target_object, ea.Sphere):
+            distance = np.linalg.norm(
+                self.target_object.position_collection.flatten()
+                - self.target_point
+            )
+            if info:
+                print(distance)
+            return abs(distance - self.target_object.radius) < eps
+        elif isinstance(self.target_object, MeshSurface):
+            raise NotImplementedError(
+                "Mesh surface target object is not implemented yet."
+            )
 
     def get_rod_state(self):
 
@@ -416,7 +621,7 @@ class ControllableGrabEnvironment(
 
         return state, reward, done, {"ctime": self.time_tracker}
 
-    def is_achieve(self, eps: float = 0.02) -> bool:
+    def is_achieve(self, eps: float = 0.02, info=False) -> bool:
         """
         Check if the rod has reached the target point.
 
@@ -430,12 +635,13 @@ class ControllableGrabEnvironment(
         bool
             True if the rod has reached the target point, False otherwise.
         """
-
-        distance = np.linalg.norm(
-            self.shearable_rod.position_collection[:, -1] - self.target_point
+        warnings.warn(
+            "The 'is_achieve' method is deprecated and will be removed in a future release. "
+            "Please use 'is_rod_achieve_target' instead.",
+            DeprecationWarning,
         )
-        # print(distance)
-        return distance < eps
+
+        return self.is_rod_achieve_target(eps, info)
 
     def render(self, mode="human"):
         """
