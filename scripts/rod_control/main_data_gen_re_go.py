@@ -1,25 +1,34 @@
 import os
 import os.path as osp
 import pickle
+from dataclasses import dataclass
 
 import numpy as np
 from tqdm import tqdm
 
+from configs import (
+    FULL_DIR,
+    NUM_DATA,
+    RANDOM_GRAB_DIR,
+    TARGET_DIR,
+    re_go_config,
+)
 from ssim.envs import ControllableGrabArguments, ControllableGrabEnvironment
-from ssim.utils import load_json, load_yaml
+from ssim.utils import load_yaml
 
-N = 50
-RANDOM_DIR = "./work_dirs/rod_control_data/random_go"
-TARGET_OBJECT_DIR = "./work_dirs/rod_control_data/target"
-TARGET_DIR = "./work_dirs/rod_control_data/full"
+
+@dataclass
+class ReGoConfig:
+    visualize: bool
 
 
 def main():
-    for i in range(N):
-        print(f"processing {i}/{N}")
-        local_random_dir = osp.join(RANDOM_DIR, f"{i}")
-        local_target_object_dir = osp.join(TARGET_OBJECT_DIR, f"{i}")
-        local_target_dir = osp.join(TARGET_DIR, f"{i}")
+    script_config = ReGoConfig(**re_go_config)
+    for i in range(NUM_DATA):
+        print(f"processing {i}/{NUM_DATA}")
+        local_random_dir = osp.join(RANDOM_GRAB_DIR, f"{i}")
+        local_target_object_dir = osp.join(TARGET_DIR, f"{i}")
+        local_target_dir = osp.join(FULL_DIR, f"{i}")
         os.makedirs(local_target_dir, exist_ok=True)
 
         object_id = 0
@@ -30,16 +39,21 @@ def main():
         with open(state_action_path, "rb") as f:
             state_action = pickle.load(f)
         config = load_yaml(config_path)
-        object_config = config["objects"][object_id]
         target_config = config["objects"][target_id]
         configs = ControllableGrabArguments.from_yaml(config_path)
         env = ControllableGrabEnvironment(configs)
         env.setup()
+        env.set_target_object(object_id)
+        env.set_target_point(
+            np.array(target_config["center"]),
+            np.array([0, 0, 0]),
+        )
 
         update_interval = env.sim_config.update_interval
         total_steps = env.total_steps
         print(
-            f"Starting simulation with {total_steps} total steps and update interval {update_interval}..."
+            f"Starting simulation with {total_steps} total steps and "
+            f"update interval {update_interval}..."
         )
         progress_steps = range(0, total_steps, update_interval)
         global_step = 0
@@ -47,12 +61,8 @@ def main():
             total=2 * len(progress_steps), desc="Simulation Progress"
         ) as pbar:
 
-            env.set_target(
-                # 指定位置
-                np.array(object_config["center"]),
-                np.array([0, np.random.uniform(np.pi / 6, np.pi / 3), 0]),
-            )
-
+            pick_step = -1
+            place_step = -1
             for i in progress_steps:
                 if global_step >= state_action["normal_torque"].shape[0]:
                     break
@@ -67,21 +77,17 @@ def main():
 
                 pbar.update(1)
                 global_step += 1
-                if env.is_achieve(object_config["radius"]):
+                if not any(env.action_flags
+                           ) and env.is_rod_achieve_object_by_feedback():
                     print('Rod end point arrives at object.')
                     pick_step = global_step
-                    if not any(env.action_flags):
-                        env.action_flags[object_id] = True
-                    env.set_target(
-                        np.array(target_config["center"]),
-                        np.array([
-                            0, np.random.uniform(np.pi / 6, np.pi / 3), 0
-                        ]),
-                    )
+                    env.action_flags[object_id] = True
 
-                if any(env.action_flags
-                       ) and env.is_achieve(object_config["radius"]):
-                    print('Rod end point arrives at object.')
+                if (
+                    any(env.action_flags)
+                    and env.is_object_achieve_target(0.001)
+                ):
+                    print('Rod end point arrives at target.')
                     place_step = global_step
                     break
         del state_action["time_shots"]
@@ -91,10 +97,18 @@ def main():
         }
         new_state_action["action_steps"] = {
             "pick": pick_step,
-            "place": place_step,
+            "place": place_step if place_step != -1 else global_step,
         }
         with open(osp.join(local_target_dir, "state_action.pkl"), "wb") as f:
             pickle.dump(new_state_action, f)
+        if script_config.visualize:
+            env.visualize_3d(
+                video_name=osp.join(local_target_dir, '3d.mp4'),
+                fps=env.rendering_fps,
+                xlim=(-0.6, 0.6),
+                ylim=(-0.6, 0.6),
+                zlim=(0, 1),
+            )
 
 
 if __name__ == "__main__":

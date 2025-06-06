@@ -1,16 +1,18 @@
 import os
 import os.path as osp
 import pickle
+from dataclasses import dataclass
 
 import numpy as np
 from tqdm import tqdm
 
+from configs import NUM_DATA, RANDOM_GRAB_DIR, TARGET_DIR, target_config
 from ssim.utils import load_yaml, save_yaml
 
-N = 100
 
-RANDOM_DIR = "./work_dirs/rod_control_data/random_go"
-TARGET_DIR = "./work_dirs/rod_control_data/target"
+@dataclass
+class TargetConfig:
+    radius_range: tuple
 
 
 def get_object(
@@ -36,8 +38,9 @@ def get_target(
 
 
 def main():
-    for i in tqdm(range(N)):
-        local_random_dir = osp.join(RANDOM_DIR, f"{i}")
+    script_config = TargetConfig(**target_config)
+    for i in tqdm(range(NUM_DATA)):
+        local_random_dir = osp.join(RANDOM_GRAB_DIR, f"{i}")
         local_target_dir = osp.join(TARGET_DIR, f"{i}")
         os.makedirs(local_target_dir, exist_ok=True)
 
@@ -59,10 +62,10 @@ def main():
         place_direction = positions[place, -1, :] - positions[place, -2, :]
         place_direction = place_direction / np.linalg.norm(place_direction)
         object_radius, object_center = get_object(
-            pick_position, pick_direction, (0.05, 0.05)
+            pick_position, pick_direction, script_config.radius_range
         )
-        target_radius, target_center = get_target(
-            place_position, place_direction, object_radius * 0.5
+        _, target_center = get_target(
+            place_position, place_direction, object_radius * 0.9
         )
 
         # export obstacles configs
@@ -72,14 +75,14 @@ def main():
             "type": "sphere",
             "center": object_center,
             "radius": object_radius,
-            "density": 1.0,
+            "density": 100.0,
             "mark": "object"
         })
         spheres.append({
             "type": "sphere",
             "center": target_center,
             "radius": 0.01,
-            "density": 1.0,
+            "density": 100.0,
             "mark": "target"
         })
         base_config["objects"] = spheres

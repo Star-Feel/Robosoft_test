@@ -1,23 +1,15 @@
 import copy
 import os
 import os.path as osp
-from typing import TypedDict
+from dataclasses import dataclass
+from typing import Optional, Sequence, TypedDict
 
 import numpy as np
 import trimesh
 from tqdm import tqdm
-import sys
 
-# sys.path.append("/data/wjs/wrp/SoftRoboticaSimulator")
-
-from ssim.utils import load_yaml, save_yaml, load_json
-
-N = 100
-
-FULL_DIR = "./work_dirs/rod_control_data/full"
-TARGET_DIR = "./work_dirs/rod_control_data/full"
-BASE_ASSETS_DIR = "./assets"
-ASSETS_DIR = "./scene_assets/living_room"
+from configs import FULL_DIR, NUM_DATA, meshes_config
+from ssim.utils import load_json, load_yaml, save_json, save_yaml
 
 
 class ASSET(TypedDict):
@@ -40,32 +32,31 @@ SPHERE_TEMP = {
     "shape": "",
 }
 
+shape2name = {
+    "Obj": "football",
+    "BasketBall": "basketball",
+    "pillows_obj": "gray pillow",
+    "Book_by_Peter_Iliev_obj": "red book",
+    "Coffee_cup_withe_": "white coffee cup",
+    "Tea_Cup": "tea cup",
+    "conbyfr": "conbyfr",
+    "conbyfr2": "conbyfr2",
+}
 
-def get_base_assets_with_bounding_boxes():
+
+@dataclass
+class MeshesConfig:
+    base_assets_dir: str
+    blend_assets_dir: str
+    sphere_probability: float
+
+
+def get_assets_with_bounding_boxes(assets_dir: str, asserts_type: str = "stl"):
+    file_appendix = ".stl" if asserts_type == "stl" else ".obj"
     assets = {}
-    for root, _, files in os.walk(BASE_ASSETS_DIR):
+    for root, _, files in os.walk(assets_dir):
         for file in files:
-            if file.endswith(".stl"):
-                asset_path = os.path.join(root, file)
-                asset_name = osp.splitext(file)[0]
-
-                # Load the mesh and compute the bounding box
-                mesh = trimesh.load(asset_path)
-                bounding_box = mesh.bounds.tolist(
-                )  # Store as a list for JSON compatibility
-
-                # Map asset name to its path and bounding box
-                assets[asset_name] = ASSET(path=asset_path, bbox=bounding_box)
-
-    return assets
-
-
-def get_assets_with_bounding_boxes():
-    assets = {}
-    for root, _, files in os.walk(ASSETS_DIR):
-        for file in files:
-
-            if file.endswith(".obj"):
+            if file.endswith(file_appendix):
                 asset_path = os.path.join(root, file)
                 asset_name = osp.splitext(file)[0]
 
@@ -106,7 +97,7 @@ def get_random_mesh(
 def get_random_sphere(assets: dict[ASSET],
                       name: str = None) -> tuple[str, str, float]:
     name_list = list(["Obj", "BasketBall"])
-    if name:
+    if name and name in name_list:
         name_list.remove(name)
 
     sphere_name = np.random.choice(name_list)
@@ -115,106 +106,119 @@ def get_random_sphere(assets: dict[ASSET],
     return str(sphere_name), sphere_path, sphere_span
 
 
+def get_sphere_mesh_data(
+    base_assets: dict[ASSET],
+    blend_assets: dict[ASSET],
+    base_sphere: dict | Sequence,
+    sphere_probability: float = 0.5,
+    exclude_asset: Optional[str] = None,
+):
+    if isinstance(base_sphere, Sequence):
+        x, y, z, radius = base_sphere
+        base_sphere = SPHERE_TEMP.copy()
+        base_sphere["center"] = [x, y, z]
+        base_sphere["radius"] = radius
+
+    if np.random.rand() < sphere_probability:
+        sphere_target_name, _, _ = get_random_sphere(
+            blend_assets, exclude_asset
+        )
+        object_dict = copy.deepcopy(SPHERE_TEMP)
+        object_dict["shape"] = sphere_target_name
+        object_dict["density"] = base_sphere['density']
+        object_dict["center"] = base_sphere['center']
+        object_dict["radius"] = base_sphere['radius']
+    else:
+        center = base_sphere["center"]
+        radius = base_sphere["radius"]
+
+        (
+            mesh_target_name,
+            mesh_target_path,
+            mesh_target_span,
+        ) = get_random_mesh(base_assets)
+        blend_mesh_target_name, _, _ = get_random_mesh(
+            blend_assets,
+            exclude_asset,
+            mesh_target_name,
+        )
+        object_dict = copy.deepcopy(MESH_TEMP)
+        object_dict["mesh_path"] = mesh_target_path
+        object_dict["shape"] = blend_mesh_target_name
+
+        max_mesh_span = float(np.linalg.norm(mesh_target_span))
+
+        scale = round(2 * radius / max_mesh_span, 3)
+        object_dict["center"] = center
+        object_dict["scale"] = [scale] * 3
+    return object_dict
+
+
 def main():
-    for i in tqdm(range(N)):
+    script_config = MeshesConfig(**meshes_config)
+    for i in tqdm(range(NUM_DATA)):
         local_full_dir = osp.join(FULL_DIR, f"{i}")
-        local_target_dir = osp.join(TARGET_DIR, f"{i}")
+        local_target_dir = osp.join(FULL_DIR, f"{i}")
 
         os.makedirs(local_target_dir, exist_ok=True)
 
-        base_assets = get_base_assets_with_bounding_boxes()
-        assets = get_assets_with_bounding_boxes()
+        base_assets = get_assets_with_bounding_boxes(
+            script_config.base_assets_dir, "stl"
+        )
+        assets = get_assets_with_bounding_boxes(
+            script_config.blend_assets_dir, "obj"
+        )
 
         config = load_yaml(osp.join(local_full_dir, "config.yaml"))
         spheres = config["objects"]
 
         info = load_json(osp.join(FULL_DIR, f"{i}", "info.json"))
-        target_id = info["object_id"]
-        target_obj_id = info["target_id"]
+        target_obj_id = info["object_id"]
+        target_pos_id = info["target_id"]
 
-        sphere_target_name = None
-        blend_mesh_target_name = None
-
-        sphere_target_name, _, _ = get_random_sphere(assets)
+        # 目标区域
         sphere_target_dict = copy.deepcopy(SPHERE_TEMP)
         sphere_target_dict["shape"] = "target_surface"
-        sphere_target_dict["density"] = spheres[target_obj_id]['density']
-        sphere_target_dict["center"] = spheres[target_obj_id]['center']
-        sphere_target_dict["radius"] = spheres[target_obj_id]['radius']
-        spheres[target_obj_id] = sphere_target_dict
+        sphere_target_dict["density"] = spheres[target_pos_id]['density']
+        sphere_target_dict["center"] = spheres[target_pos_id]['center']
+        sphere_target_dict["radius"] = spheres[target_pos_id]['radius']
+        spheres[target_pos_id] = sphere_target_dict
 
         del sphere_target_dict
 
-        # 确定target信息
-        if np.random.rand() < 1 / 2:
-            sphere_target_name, _, _ = get_random_sphere(assets)
-            sphere_target_dict = copy.deepcopy(SPHERE_TEMP)
-            sphere_target_dict["shape"] = sphere_target_name
-            sphere_target_dict["density"] = spheres[target_id]['density']
-            sphere_target_dict["center"] = spheres[target_id]['center']
-            sphere_target_dict["radius"] = spheres[target_id]['radius']
-            spheres[target_id] = sphere_target_dict
-
-        else:
-            center = spheres[target_id]["center"]
-            radius = spheres[target_id]["radius"]
-
-            mesh_target_name, mesh_target_path, mesh_target_span = get_random_mesh(
-                base_assets
-            )
-            blend_mesh_target_name, _, _ = get_random_mesh(
-                assets, base_mesh_name=mesh_target_name
-            )
-            mesh_target_dict = copy.deepcopy(MESH_TEMP)
-            mesh_target_dict["mesh_path"] = mesh_target_path
-            mesh_target_dict["shape"] = blend_mesh_target_name
-
-            max_mesh_span = float(np.linalg.norm(mesh_target_span))
-            scale = round(2 * radius / max_mesh_span, 3)
-            mesh_target_dict["center"] = center
-            mesh_target_dict["scale"] = [scale] * 3
-            spheres[target_id] = mesh_target_dict
-
+        target_dict = get_sphere_mesh_data(
+            base_assets,
+            assets,
+            spheres[target_obj_id],
+            sphere_probability=script_config.sphere_probability,
+            exclude_asset=None
+        )
+        spheres[target_obj_id] = target_dict
         # 确定除target外的物体信息
-        for j in range(len(spheres)):
-            if j == target_id or j == target_obj_id:
+        for idx, sphere in enumerate(spheres):
+            if idx == target_obj_id or idx == target_pos_id:
                 continue
-            sphere = spheres[j]
-            if np.random.rand() < 1 / 3:
+            obstacle_dict = get_sphere_mesh_data(
+                base_assets,
+                assets,
+                sphere,
+                sphere_probability=script_config.sphere_probability,
+                exclude_asset=target_dict["shape"]
+            )
+            spheres[idx] = obstacle_dict
 
-                sphere_name, _, _ = get_random_sphere(
-                    assets, sphere_target_name
-                )
-                sphere_dict = copy.deepcopy(SPHERE_TEMP)
-                sphere_dict["shape"] = sphere_name
-                sphere_dict["density"] = sphere['density']
-                sphere_dict["center"] = sphere['center']
-                sphere_dict["radius"] = sphere['radius']
-                spheres[j] = sphere_dict
+        # 处理文本
+        target_mesh = target_dict["shape"]
+        target_name = shape2name.get(target_mesh, target_mesh)
 
-                del sphere_dict
-
-            else:
-                center = sphere["center"]
-                radius = sphere["radius"]
-
-                mesh_name, mesh_path, mesh_span = get_random_mesh(base_assets)
-                blend_mesh_name, _, _ = get_random_mesh(
-                    assets, blend_mesh_target_name, mesh_name
-                )
-                mesh_dict = copy.deepcopy(MESH_TEMP)
-                mesh_dict["mesh_path"] = mesh_path
-                mesh_dict["shape"] = blend_mesh_name
-
-                max_mesh_span = float(np.linalg.norm(mesh_span))
-                scale = round(2 * radius / max_mesh_span, 3)
-                mesh_dict["center"] = center
-                mesh_dict["scale"] = [scale] * 3
-
-                spheres[j] = mesh_dict
-
-                del mesh_dict
-
+        info = load_json(osp.join(local_full_dir, "info.json"))
+        info["description"] = info["description"].replace(
+            "<object>", target_name
+        )
+        info["description"] = info["description"].replace(
+            "<area>", "gray zone"
+        )
+        save_json(info, osp.join(local_target_dir, "info.json"))
         save_yaml(config, osp.join(local_target_dir, "config.yaml"))
 
 
