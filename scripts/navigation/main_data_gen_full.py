@@ -138,7 +138,7 @@ def main():
         total_spheres.extend(target_spheres)
         for sphere in total_spheres:
             if "density" not in sphere:
-                sphere["density"] = 1.0
+                sphere["density"] = 100.0
             if "position" in sphere:
                 sphere["center"] = sphere.pop("position")
         target_id = len(total_spheres) - 1

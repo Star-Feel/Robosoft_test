@@ -6,11 +6,11 @@ from typing import Optional, Sequence, TypedDict
 
 import numpy as np
 import trimesh
+from templates import MESH_TEMP, SPHERE_TEMP
 from tqdm import tqdm
 
 from configs import FULL_DIR, NUM_DATA, meshes_config
 from ssim.utils import load_json, load_yaml, save_json, save_yaml
-from templates import MESH_TEMP, SPHERE_TEMP
 
 
 class ASSET(TypedDict):
