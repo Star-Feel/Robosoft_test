@@ -66,5 +66,7 @@ bash scirpts/navigation/date_gen.sh
 ## VLM Data Generate
 To run RL model, we need to
 ```bash
-pip install tensorflow==2.16.1
+pip install tensorflow==2.15.0
+pip install stable_baselines==2.10.2
 ```
+stablebaselines需要低版本tensorflow，如果你安装了高版本tensorflow，请在每一个报错处修改 import tensorflow.compat.v1 as tf
