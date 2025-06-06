@@ -20,12 +20,14 @@ def main():
     env = ControllableGrabEnvironment(configs)
 
     with open(
-            "/data/zyw/workshop/Elastica-RL-control-fix-improve2/work_dir/train_origin_xyz_Q_onepoint_norotate_mycond/log_SAC_3d-tracking_id-2000000_0/data.pkl",
-            "rb") as fp:
+        "/data/zyw/workshop/Elastica-RL-control-fix-improve2/work_dir/train_origin_xyz_Q_onepoint_norotate_mycond/log_SAC_3d-tracking_id-2000000_0/data.pkl",
+        "rb"
+    ) as fp:
         data = pickle.load(fp)
     with open(
-            "/data/zyw/workshop/Elastica-RL-control-fix-improve2/work_dir/train_origin_xyz_Q_onepoint_norotate_mycond/log_SAC_3d-tracking_id-2000000_0/params.pkl",
-            "rb") as fp:
+        "/data/zyw/workshop/Elastica-RL-control-fix-improve2/work_dir/train_origin_xyz_Q_onepoint_norotate_mycond/log_SAC_3d-tracking_id-2000000_0/params.pkl",
+        "rb"
+    ) as fp:
         param = pickle.load(fp)
     model = SAC(policy=data["policy"], env=None, _init_setup_model=False)  # pytype: disable=not-instantiable
     model.__dict__.update(data)
@@ -47,8 +49,10 @@ def main():
     progress_steps = range(0, total_steps, update_interval)
     global_step = 0
     with tqdm(total=len(progress_steps), desc="Simulation Progress") as pbar:
-        obs = env.set_target(
-            np.array([0.20741026108987037, -0.1671957213830692, 0.16156895806419683]),
+        obs = env.set_target_point(
+            np.array([
+                0.20741026108987037, -0.1671957213830692, 0.16156895806419683
+            ]),
             np.array([0, np.pi / 6, 0]),
         )
         for _ in progress_steps:
@@ -64,7 +68,7 @@ def main():
             for idx, _ in enumerate(env.objects):
                 if env.attach_flags[idx] and idx == 0:
                     env.action_flags[idx] = True
-        obs = env.set_target(
+        obs = env.set_target_point(
             np.array([0.3, 0.0, 0.01]),
             np.array([0, np.pi / 6, 0]),
         )
@@ -90,11 +94,13 @@ def main():
             if global_step >= len(progress_steps):
                 break
 
-    env.visualize_3d(video_name="3d.mp4",
-                     fps=env.rendering_fps,
-                     xlim=(-0.5, 0.5),
-                     ylim=(-0.5, 0.5),
-                     zlim=(0, 1))
+    env.visualize_3d(
+        video_name="3d.mp4",
+        fps=env.rendering_fps,
+        xlim=(-0.5, 0.5),
+        ylim=(-0.5, 0.5),
+        zlim=(0, 1)
+    )
 
 
 if __name__ == "__main__":

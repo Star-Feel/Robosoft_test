@@ -43,8 +43,8 @@ def run_simulation(env: GrabBallEnvironment) -> bool:
 
 def main():
 
-    config_path = "/data/zyw/workshop/attempt/ssim/configs/rod_objects.yaml"
-    work_dir = "/data/zyw/workshop/attempt/work_dirs"
+    config_path = "/data/wjs/SoftRoboticaSimulator/ssim/configs/rod_objects_test.yaml"
+    work_dir = "/data/wjs/SoftRoboticaSimulator/work_dirs"
     os.chdir(work_dir)
     configs = GrabBallArguments.from_yaml(config_path)
 
@@ -53,12 +53,9 @@ def main():
     env.setup()
     success = run_simulation(env)
 
-    env.visualize_2d(video_name="2d.mp4", fps=env.rendering_fps)
-    # env.visualize_3d(video_name="3d.mp4", fps=env.rendering_fps)
-    env.export_callbacks("grab_ball_callbacks.pkl")
-    env.visualize_3d_povray(video_name='povray',
-                            output_images_dir='./work_dirs/povray',
-                            fps=20)
+    # env.visualize_2d(video_name="/data/wjs/SoftRoboticaSimulator/test_result/2d.mp4", fps=env.rendering_fps)
+    env.visualize_3d(video_name="/data/wjs/SoftRoboticaSimulator/test_result/3d.mp4", fps=env.rendering_fps)
+    # env.export_callbacks("grab_ball_callbacks.pkl")
     return success
 
 
