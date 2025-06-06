@@ -9,3 +9,6 @@ python scripts/rod_control/main_data_gen_obstacle.py
 python scripts/rod_control/main_data_gen_full.py
 
 python scripts/rod_control/main_data_gen_meshes.py
+
+python scripts/rod_control/main_data_gen_visual.py
+

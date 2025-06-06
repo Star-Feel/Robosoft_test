@@ -11,6 +11,7 @@ from configs import (
     OBSTACLE_DIR,
     RANDOM_GRAB_DIR,
     TARGET_DIR,
+    VISUAL_DIR,
 )
 from ssim.utils import load_yaml, save_json, save_yaml
 
@@ -70,6 +71,7 @@ def main():
         local_random_grab_dir = osp.join(RANDOM_GRAB_DIR, f"{i}")
         local_obstacle_dir = osp.join(OBSTACLE_DIR, f"{i}")
         local_target_dir = osp.join(TARGET_DIR, f"{i}")
+        local_visual_dir = osp.join(VISUAL_DIR, f"{i}")
         local_full_dir = osp.join(FULL_DIR, f"{i}")
         os.makedirs(local_full_dir, exist_ok=True)
 
@@ -94,6 +96,7 @@ def main():
         info["id"] = i
         info["config"] = osp.join(local_full_dir, "config.yaml")
         info["state_action"] = osp.join(local_full_dir, "state_action.pkl")
+        info["visual"] = osp.join(local_visual_dir, "visual")
         info["object_id"] = object_id
         info["target_id"] = target_id
         info["description"] = desciprtion
