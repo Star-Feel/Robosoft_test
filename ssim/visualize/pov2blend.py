@@ -280,12 +280,8 @@ class VLNBlenderRenderer:
         self.set_snake_by_pov_content()
 
     def load_obj(self, shape: str):
-        if shape == "conbyfr":
-            tar_idx = 1
-        elif shape == "conbyfr2":
-            tar_idx = 3
-        else:
-            tar_idx = 0
+
+        tar_idx = 0
         obj_path = ASSET_PATHS[shape]
 
         bpy.ops.wm.obj_import(filepath=obj_path)
@@ -328,13 +324,11 @@ class VLNBlenderRenderer:
         local_bbox_corners = [
             mathutils.Vector(corner) for corner in obj.bound_box
         ]
-        max_dimension = max((local_bbox_corners[0]
-                             - local_bbox_corners[6]).length,
-                            (local_bbox_corners[1]
-                             - local_bbox_corners[7]).length,
-                            (local_bbox_corners[2]
-                             - local_bbox_corners[4]).length)
-
+        max_dimension = max(
+            (local_bbox_corners[0] - local_bbox_corners[4]).length,  # x
+            (local_bbox_corners[0] - local_bbox_corners[1]).length,  # z
+            (local_bbox_corners[0] - local_bbox_corners[3]).length  # y
+        )
         # 计算需要的缩放系数来使物体恰好适合球体
         # 使用直径的一半（半径）与球体半径比较
         scale_factor = (radius * 2) / max_dimension
@@ -353,29 +347,17 @@ class VLNBlenderRenderer:
 
     def auto_adjust_mesh_obj_data(self, obj, location, scale):
 
-        if "Cup" in obj.name:
-            rotation_euler = (math.radians(90), 0, 0)
-        elif 'Coffee_cup_withe' in obj.name:
-            rotation_euler = (0, 0, math.radians(90))
-        elif 'Book_by_Peter_Iliev_obj' in obj.name:
-            rotation_euler = (0, math.radians(90), 0)
-        elif 'big_pillow' in obj.name:
-            rotation_euler = (0, 0, 0)
-        elif 'Cylinder' in obj.name:
-            rotation_euler = (math.radians(90), 0, 0)
-        else:
-            rotation_euler = (math.radians(90), 0, math.radians(90))
+        rotation_euler = (math.radians(90), 0, 0)
 
         # 计算物体边界盒的对角线长度（作为"直径"）
         local_bbox_corners = [
             mathutils.Vector(corner) for corner in obj.bound_box
         ]
         dimensions = [
-            (local_bbox_corners[0] - local_bbox_corners[6]).length,  # z
-            (local_bbox_corners[1] - local_bbox_corners[7]).length,  # x
-            (local_bbox_corners[2] - local_bbox_corners[4]).length  # y
+            (local_bbox_corners[0] - local_bbox_corners[4]).length,  # x
+            (local_bbox_corners[0] - local_bbox_corners[1]).length,  # z
+            (local_bbox_corners[0] - local_bbox_corners[3]).length  # y
         ]
-
         max_dimension = np.linalg.norm(dimensions)
 
         # 计算需要的缩放系数来使物体恰好适合原mesh
@@ -592,7 +574,7 @@ class VLNBlenderRenderer:
         r, g, b = color
 
         # 创建材质
-        material = bpy.data.materials.new(name=f"SweepMaterial_0")
+        material = bpy.data.materials.new(name="SweepMaterial_0")
         material.use_nodes = True
 
         nodes = material.node_tree.nodes
@@ -664,7 +646,7 @@ class VLNBlenderRenderer:
 
         bpy.ops.render.render()
         bpy.data.images["Render Result"].save_render(
-            f"renders/frame_000000.png"
+            "renders/frame_000000.png"
         )
 
     def render_by_arguments(
