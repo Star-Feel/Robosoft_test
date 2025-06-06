@@ -968,12 +968,7 @@ class VLMBlenderRenderer:
 
                 mesh_shape = re.search(r'shape\s+([^\s>]+)', mesh_match)
                 shape = mesh_shape.group(1)
-                if shape == "conbyfr":
-                    tar_idx = 1
-                elif shape == "conbyfr2":
-                    tar_idx = 3
-                else:
-                    tar_idx = 0
+                tar_idx = 0
                 obj_path = ASSET_PATHS[shape]
 
                 bpy.ops.wm.obj_import(filepath=obj_path)
