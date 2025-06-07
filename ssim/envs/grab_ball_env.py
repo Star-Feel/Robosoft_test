@@ -6,10 +6,12 @@ import elastica as ea
 import numpy as np
 from elastica._calculus import _isnan_check
 
-from ..arguments import (RodArguments, SimulatorArguments, SphereArguments,
-                         SuperArguments)
-from ..components import (ChangeableUniformForce,
-                          RigidBodyAnalyticalLinearDamper)
+from ..arguments import (
+    RodArguments, SimulatorArguments, SphereArguments, SuperArguments
+)
+from ..components import (
+    ChangeableUniformForce, RigidBodyAnalyticalLinearDamper
+)
 from ..components.contact import JoinableRodSphereContact
 from .base_envs import FetchableRodObjectsEnvironment
 
@@ -41,7 +43,8 @@ class GrabBallEnvironment(FetchableRodObjectsEnvironment):
     def setup(self):
 
         shear_modulus = self.rod_config.youngs_modulus / (
-            self.rod_config.poisson_ratio + 1.0)
+            self.rod_config.poisson_ratio + 1.0
+        )
 
         self.add_shearable_rod(
             n_elem=self.rod_config.n_elem,
@@ -70,24 +73,19 @@ class GrabBallEnvironment(FetchableRodObjectsEnvironment):
 
         for obj in self.objects:
             self.simulator.detect_contact_between(
-                self.shearable_rod,
-                obj).using(JoinableRodSphereContact,
-                           k=10,
-                           nu=0,
-                           velocity_damping_coefficient=1e3,
-                           friction_coefficient=10,
-                           flag=self.action_flags,
-                           flag_id=self.object2id[obj])
-
-        # for i in range(len(self.objects)):
-        #     for j in range(i + 1, len(self.objects)):
-        #         self.simulator.detect_contact_between(
-        #             self.objects[i], self.objects[j]).using(
-        #                 ea.SphereSphereContact,
-        #                 k=10,
-        #                 nu=0,
-        #                 velocity_damping_coefficient=1e3,
-        #                 friction_coefficient=10)
+                self.shearable_rod, obj
+            ).using(
+                JoinableRodSphereContact,
+                k=10,
+                nu=0,
+                velocity_damping_coefficient=1e3,
+                friction_coefficient=10,
+                action_flags=self.action_flags,
+                attach_flags=self.attach_flags,
+                flag_id=self.object2id[obj],
+                collision=True,
+                eps=0.01,
+            )
 
         damping_constant = 2e-2
         self.simulator.dampen(self.shearable_rod).using(
@@ -104,7 +102,8 @@ class GrabBallEnvironment(FetchableRodObjectsEnvironment):
             )
 
         callback_step_skip = int(
-            1.0 / (self.sim_config.rendering_fps * self.time_step))
+            1.0 / (self.sim_config.rendering_fps * self.time_step)
+        )
         # Add callbacks for data collection if enabled
         self._add_data_collection_callbacks(callback_step_skip)
 
@@ -121,10 +120,8 @@ class GrabBallEnvironment(FetchableRodObjectsEnvironment):
                 return {"status": "error", "message": "NaN values detected"}
 
         return {
-            "time":
-            self.time_tracker,
-            "rod_tip_position":
-            self.shearable_rod.position_collection[..., -1].copy(),
-            "status":
-            "ok"
+            "time": self.time_tracker,
+            "rod_tip_position": self.shearable_rod.position_collection[
+                ..., -1].copy(),
+            "status": "ok"
         }

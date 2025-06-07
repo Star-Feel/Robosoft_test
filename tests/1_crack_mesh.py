@@ -15,7 +15,8 @@ def run_simulation(env: MeshDemoEnvironment) -> bool:
     # Run simulation for a number of steps
     total_steps = env.total_steps
     print(
-        f"Starting simulation with {total_steps} total steps and update interval {update_interval}..."
+        f"Starting simulation with {total_steps} total steps "
+        f"and update interval {update_interval}..."
     )
 
     # Use tqdm to create a progress bar
@@ -28,8 +29,8 @@ def run_simulation(env: MeshDemoEnvironment) -> bool:
                     if isinstance(object_, MeshSurface):
                         continue
                     if is_contact(
-                            object_,
-                            env.shearable_rod) and idx == 0 and counter == 0:
+                        object_, env.shearable_rod
+                    ) and idx == 0 and counter == 0:
                         env.action_flags[idx] = True
                         env.uniform_force[-1] = -1
             else:
@@ -46,9 +47,9 @@ def run_simulation(env: MeshDemoEnvironment) -> bool:
 
 def main():
 
-    config_path = "/data/zyw/workshop/attempt/ssim/configs/rod_mesh.yaml"
-    work_dir = "./work_dirs"
-    # os.chdir(work_dir)
+    config_path = "ssim/configs/rod_mesh.yaml"
+    work_dir = "./work_dirs/test/1_crack_mesh"
+    os.makedirs(work_dir, exist_ok=True)
     configs = MeshDemoArguments.from_yaml(config_path)
 
     env = MeshDemoEnvironment(configs)
@@ -56,16 +57,15 @@ def main():
     env.setup()
     success = run_simulation(env)
 
-    # env.visualize_2d(video_name="2d.mp4",
-    #                  fps=env.rendering_fps,
-    #                  xlim=(0, 4),
-    #                  ylim=(-2, 2),
-    #                  equal_aspect=True)
+    env.visualize_2d(
+        video_name=os.path.join(work_dir, "2d.mp4"),
+        fps=env.rendering_fps,
+        xlim=(0, 4),
+        ylim=(-2, 2),
+        equal_aspect=True
+    )
     # env.visualize_3d(video_name="3d.mp4", fps=env.rendering_fps)
-    env.export_callbacks("grab_mesh_callbacks.pkl")
-    env.visualize_3d_povray(video_name=os.path.join(work_dir, "demo_povray"),
-                            output_images_dir=os.path.join(work_dir, "povray"),
-                            fps=20)
+
     return success
 
 

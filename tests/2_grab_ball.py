@@ -14,7 +14,8 @@ def run_simulation(env: GrabBallEnvironment) -> bool:
     # Run simulation for a number of steps
     total_steps = env.total_steps
     print(
-        f"Starting simulation with {total_steps} total steps and update interval {update_interval}..."
+        f"Starting simulation with {total_steps} total steps and "
+        f"update interval {update_interval}..."
     )
 
     # Use tqdm to create a progress bar
@@ -25,13 +26,13 @@ def run_simulation(env: GrabBallEnvironment) -> bool:
             if not any(env.action_flags):
                 for idx, object_ in enumerate(env.objects):
                     if is_contact(
-                            object_,
-                            env.shearable_rod) and idx == 0 and counter == 0:
+                        object_, env.shearable_rod
+                    ) and idx == 0 and counter == 0:
                         env.action_flags[idx] = True
                         env.uniform_force[-1] = -1
             else:
                 counter += 1
-            if counter >= 10000:
+            if counter >= 15000:
                 for i in range(len(env.action_flags)):
                     env.action_flags[i] = False
                     env.uniform_force[-1] = 0
@@ -43,9 +44,9 @@ def run_simulation(env: GrabBallEnvironment) -> bool:
 
 def main():
 
-    config_path = "/data/wjs/SoftRoboticaSimulator/ssim/configs/rod_objects_test.yaml"
-    work_dir = "/data/wjs/SoftRoboticaSimulator/work_dirs"
-    os.chdir(work_dir)
+    config_path = "ssim/configs/rod_objects.yaml"
+    work_dir = "./work_dirs/test/2_grab_ball"
+    os.makedirs(work_dir, exist_ok=True)
     configs = GrabBallArguments.from_yaml(config_path)
 
     env = GrabBallEnvironment(configs)
@@ -53,9 +54,13 @@ def main():
     env.setup()
     success = run_simulation(env)
 
-    # env.visualize_2d(video_name="/data/wjs/SoftRoboticaSimulator/test_result/2d.mp4", fps=env.rendering_fps)
-    env.visualize_3d(video_name="/data/wjs/SoftRoboticaSimulator/test_result/3d.mp4", fps=env.rendering_fps)
-    # env.export_callbacks("grab_ball_callbacks.pkl")
+    env.visualize_3d(
+        os.path.join(work_dir, "3d.mp4"),
+        fps=env.rendering_fps,
+        xlim=[-1, 1],
+        ylim=[-1, 1],
+        zlim=[0, 2],
+    )
     return success
 
 

@@ -1,7 +1,13 @@
+import os
+
 from tqdm import tqdm
 
-from ssim.arguments import (RodArguments, SimulatorArguments, SphereArguments,
-                            SuperArgumentParser)
+from ssim.arguments import (
+    RodArguments,
+    SimulatorArguments,
+    SphereArguments,
+    SuperArgumentParser,
+)
 from ssim.envs import PushBallEnvironment
 
 
@@ -13,7 +19,8 @@ def run_simulation(env: PushBallEnvironment):
     # Run simulation for a number of steps
     total_steps = env.total_steps
     print(
-        f"Starting simulation with {total_steps} total steps and update interval {update_interval}..."
+        f"Starting simulation with {total_steps} total steps "
+        f"and update interval {update_interval}..."
     )
 
     # Use tqdm to create a progress bar
@@ -28,10 +35,13 @@ def run_simulation(env: PushBallEnvironment):
 
 def main():
 
-    config_path = "/data/zyw/workshop/attempt/ssim/configs/push_ball.yaml"
+    config_path = "ssim/configs/push_ball.yaml"
+    work_dir = "./work_dirs/test/0_push_ball"
+    os.makedirs(work_dir, exist_ok=True)
     parser = SuperArgumentParser(
         (SphereArguments, RodArguments, SimulatorArguments),
-        prefix=("sphere", "rod", "simulator"))
+        prefix=("sphere", "rod", "simulator")
+    )
     sphere_config, rod_config, sim_config = parser.parse_yaml_file(config_path)
 
     env = PushBallEnvironment(rod_config, sphere_config, sim_config)
@@ -39,8 +49,8 @@ def main():
     env.setup()
     success = run_simulation(env)
 
-    env.visualize_3d(save_path="3d.mp4")
-    env.visualize_2d(save_path="2d.mp4")
+    env.visualize_3d(save_path=os.path.join(work_dir, "3d.mp4"))
+    env.visualize_2d(save_path=os.path.join(work_dir, "2d.mp4"))
 
     return success
 

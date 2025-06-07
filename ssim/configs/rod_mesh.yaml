@@ -1,17 +1,10 @@
 # Sphere configuration
 objects:
-  # - type: sphere
-  #   center: [0.0, 0.0, 2.0]
-  #   radius: 0.3
-  #   density: 1.0
   - type: mesh_surface
-    mesh_path: /data/zyw/workshop/PyElastica/tests/cube.stl
+    mesh_path: assets/cube.stl
     center: [0.0, 0.0, 2.0]
     scale: [0.1, 0.1, 0.1]
-  # - type: sphere
-  #   center: [0.25, 0, 1.0]
-  #   radius: 0.3
-  #   density: 1.0
+
 rod:
   n_elem: 50
   start: [0.0, 0.0, 0.0]

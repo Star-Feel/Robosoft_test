@@ -1,7 +1,9 @@
-transformers
-pyyaml
-numba
-scipy
-pyvista
-bpy
-trimesh
+transformers==4.49.0
+pyyaml==6.0.2
+numba==0.61.0
+scipy==1.15.2
+pyvista==0.44.1
+bpy==4.4.0
+trimesh==4.6.8
+gym==0.26.2
+numpy==1.26.0
