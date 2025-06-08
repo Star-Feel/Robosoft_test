@@ -6,7 +6,9 @@ conda create -n ssim python=3.11
 conda activate ssim
 
 pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu118
-pip install --no-deps pyelastica
+cp ./pyelastica.patch ./third_patry/pyelastica
+cd ./third_patry/pyelastica && git apply pyelastica.patch
+pip install .
 pip install -r requirements.txt
 pip install -e.
 ```
