@@ -172,8 +172,6 @@ wandb
 wandb/
 
 work_dirs
-third_party
-third_party/
 Data/
 Data
 DeepSpeed

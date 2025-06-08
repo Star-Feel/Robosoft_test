@@ -1,0 +1,3 @@
+[submodule "third_party/pyelastica"]
+	path = third_party/pyelastica
+	url = https://github.com/GazzolaLab/PyElastica.git
